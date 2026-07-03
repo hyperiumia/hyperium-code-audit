@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en"><head><title>Compliance Report — Hyperium Code-Audit</title><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a25;--border:#2a2a3a;--text:#e8e8f0;--muted:#6a6a80;--accent:#7c3aed;--accent2:#a78bfa;--green:#10b981;--red:#ef4444;--yellow:#f59e0b;--blue:#3b82f6;--cyan:#06b6d4;--orange:#f97316}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;padding:24px;min-height:100vh}
+.term{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 25px 50px rgba(0,0,0,.5);max-width:1100px;margin:0 auto}
+.bar{background:var(--surface2);padding:12px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+.dot{width:12px;height:12px;border-radius:50%}.dr{background:#ff5f56}.dy{background:#ffbd2e}.dg{background:#27c93f}
+.bt{flex:1;text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);margin-right:60px}
+.tb{padding:20px 24px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.6;overflow-x:auto}
+.hd{background:linear-gradient(135deg,#1a1030,#0f1a2e);border:1px solid var(--accent);border-radius:8px;padding:20px 24px;margin-bottom:16px}
+.hd h1{font-family:'Inter',sans-serif;font-size:18px;font-weight:800;background:linear-gradient(90deg,var(--accent2),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+.hd p{color:var(--muted);font-size:12px}
+.dv{border:none;border-top:1px solid var(--border);margin:12px 0}
+.mr{display:flex;gap:16px;margin:12px 0}
+.mc{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 18px;flex:1;text-align:center}
+.mv{font-size:24px;font-weight:700;font-family:'Inter',sans-serif}
+.ml{font-size:11px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+.th{display:flex;background:var(--surface2);padding:8px 12px;border-radius:6px 6px 0 0;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border:1px solid var(--border)}
+.tr{display:flex;padding:8px 12px;border-left:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border);font-size:12px;align-items:center}
+.tr:hover{background:var(--surface2)}
+.c{padding:0 8px}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.bc{background:#7f1d1d;color:var(--red)}.bh{background:#7c2d12;color:var(--orange)}.bm{background:#78350f;color:var(--yellow)}.bl{background:#065f46;color:var(--green)}.bi{background:#1e3a5f;color:var(--blue)}
+.pb{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;margin:4px 0}
+.pf{height:100%;border-radius:3px}
+.sb{background:linear-gradient(135deg,#0f1a0f,#0a1520);border:1px solid var(--green);border-radius:8px;padding:16px 20px;margin:12px 0}
+.sb h3{color:var(--green);font-size:14px;margin-bottom:8px}
+.sr{display:flex;padding:4px 0;font-size:12px}.sl{color:var(--muted);min-width:160px}.sv{color:var(--text)}
+.fbar{background:var(--surface2);padding:8px 16px;display:flex;justify-content:space-between;font-size:11px;color:var(--muted);border-top:1px solid var(--border)}
+.cap{margin:12px 0}
+.caph{font-size:13px;font-weight:700;padding:8px 12px;background:var(--surface2);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;margin-bottom:8px}
+.capi{padding:8px 14px;border-left:3px solid var(--border);margin:4px 0 4px 12px;font-size:12px}
+.tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;margin-right:4px}
+.tp1{background:#7f1d1d;color:var(--red)}.tp2{background:#78350f;color:var(--yellow)}.tp3{background:#1e3a5f;color:var(--blue)}
+.od{color:var(--muted)}.og{color:var(--green)}.ow{color:var(--yellow)}.or2{color:var(--red)}.oc{color:var(--cyan)}.ob{color:var(--blue)}
+.pr{color:var(--green)}.pp{color:var(--accent2)}.pk{color:var(--text)}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.an{animation:fi .4s ease forwards}
+.d1{animation-delay:.1s;opacity:0}.d2{animation-delay:.2s;opacity:0}.d3{animation-delay:.3s;opacity:0}.d4{animation-delay:.4s;opacity:0}
+</style></head>
+<body><div class="term an">
+<div class="bar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="bt">hyperium-code-audit · scan ./acme-webapp --framework owasp_top_10</div></div>
+<div class="tb">
+<div class="hd an d1">
+  <h1>🏛️ OWASP TOP 10 2021 — COMPLIANCE ASSESSMENT</h1>
+  <p>40% compliant (4/10 passed) · 6 categories with findings · 47 total findings mapped</p>
+</div>
+<div class="mr an d2">
+  <div class="mc" style="border-color:var(--red)"><div class="mv" style="color:var(--red)">40%</div><div class="ml">Compliance Score</div></div>
+  <div class="mc"><div class="mv" style="color:var(--green)">4</div><div class="ml">Passed</div></div>
+  <div class="mc"><div class="mv" style="color:var(--red)">6</div><div class="ml">Failed</div></div>
+  <div class="mc"><div class="mv" style="color:var(--orange)">47</div><div class="ml">Mapped Findings</div></div>
+</div>
+<hr class="dv">
+<div style="margin:16px 0" class="an d3">
+<div style="display:flex;align-items:center;gap:12px;margin:8px 0;padding:8px 12px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--red)">
+  <span style="font-weight:700;min-width:40px">A01</span>
+  <span style="flex:1">Broken Access Control</span>
+  <span style="background:var(--red);color:white;padding:2px 8px;border-radius:4px;font-size:12px">FAIL</span>
+  <span style="color:var(--muted);font-size:12px;min-width:80px">5 findings</span>
+  <span style="width:100px"><div class="pb"><div class="pf" style="width:20%;background:var(--red)"></div></div></span>
+</div>
+<div style="display:flex;align-items:center;gap:12px;margin:8px 0;padding:8px 12px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--red)">
+  <span style="font-weight:700;min-width:40px">A02</span>
+  <span style="flex:1">Cryptographic Failures</span>
+  <span style="background:var(--red);color:white;padding:2px 8px;border-radius:4px;font-size:12px">FAIL</span>
+  <span style="color:var(--muted);font-size:12px;min-width:80px">9 findings</span>
+  <span style="width:100px"><div class="pb"><div class="pf" style="width:10%;background:var(--red)"></div></div></span>
+</div>
+<div style="display:flex;align-items:center;gap:12px;margin:8px 0;padding:8px 12px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--red)">
+  <span style="font-weight:700;min-width:40px">A03</span>
+  <span style="flex:1">Injection</span>
+  <span style="background:var(--red);color:white;padding:2px 8px;border-radius:4px;font-size:12px">FAIL</span>
+  <span style="color:var(--muted);font-size:12px;min-width:80px">18 findings</span>
+  <span style="width:100px"><div class="pb"><div class="pf" style="width:5%;background:var(--red)"></div></div></span>
+</div>
+<div style="display:flex;align-items:center;gap:12px;margin:8px 0;padding:8px 12px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--green)">
+  <span style="font-weight:700;min-width:40px">A04</span>
+  <span style="flex:1">Insecure Design</span>
+  <span style="background:var(--green);color:white;padding:2px 8px;border-radius:4px;font-size:12px">PASS</span>
+  <span style="color:var(--muted);font-size:12px;min-width:80px">0 findings</span>
+  <span style="width:100px"><div class="pb"><div class="pf" style="width:100%;background:var(--green)"></div></div></span>
+</div>
+<div style="display:flex;align-items:center;gap:12px;margin:8px 0;padding:8px 12px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--red)">
+  <span style="font-weight:700;min-width:40px">A05</span>
+  <span style="flex:1">Security Misconfiguration</span>
+  <span style="background:var(--red);color:white;padding:2px 8px;border-radius:4px;font-size:12px">FAIL</span>
+  <span style="color:var(--muted);font-size:12px;min-width:80px">3 findings</span>
+  <span style="width:100px"><div class="pb"><div class="pf" style="width:40%;background:var(--yellow)"></div></div></span>
+</div>
+<div style="display:flex;align-items:center;gap:12px;margin:8px 0;padding:8px 12px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--red)">
+  <span style="font-weight:700;min-width:40px">A06</span>
+  <span style="flex:1">Vulnerable Components</span>
+  <span style="background:var(--red);color:white;padding:2px 8px;border-radius:4px;font-size:12px">FAIL</span>
+  <span style="color:var(--muted);font-size:12px;min-width:80px">11 findings</span>
+  <span style="width:100px"><div class="pb"><div class="pf" style="width:15%;background:var(--red)"></div></div></span>
+</div>
+<div style="display:flex;align-items:center;gap:12px;margin:8px 0;padding:8px 12px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--red)">
+  <span style="font-weight:700;min-width:40px">A07</span>
+  <span style="flex:1">Auth Failures</span>
+  <span style="background:var(--red);color:white;padding:2px 8px;border-radius:4px;font-size:12px">FAIL</span>
+  <span style="color:var(--muted);font-size:12px;min-width:80px">1 finding</span>
+  <span style="width:100px"><div class="pb"><div class="pf" style="width:30%;background:var(--orange)"></div></div></span>
+</div>
+<div style="display:flex;align-items:center;gap:12px;margin:8px 0;padding:8px 12px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--green)">
+  <span style="font-weight:700;min-width:40px">A08</span>
+  <span style="flex:1">Data Integrity Failures</span>
+  <span style="background:var(--green);color:white;padding:2px 8px;border-radius:4px;font-size:12px">PASS</span>
+  <span style="color:var(--muted);font-size:12px;min-width:80px">0 findings</span>
+  <span style="width:100px"><div class="pb"><div class="pf" style="width:100%;background:var(--green)"></div></div></span>
+</div>
+<div style="display:flex;align-items:center;gap:12px;margin:8px 0;padding:8px 12px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--green)">
+  <span style="font-weight:700;min-width:40px">A09</span>
+  <span style="flex:1">Logging Failures</span>
+  <span style="background:var(--green);color:white;padding:2px 8px;border-radius:4px;font-size:12px">PASS</span>
+  <span style="color:var(--muted);font-size:12px;min-width:80px">0 findings</span>
+  <span style="width:100px"><div class="pb"><div class="pf" style="width:100%;background:var(--green)"></div></div></span>
+</div>
+<div style="display:flex;align-items:center;gap:12px;margin:8px 0;padding:8px 12px;background:var(--surface2);border-radius:6px;border-left:3px solid var(--green)">
+  <span style="font-weight:700;min-width:40px">A10</span>
+  <span style="flex:1">SSRF</span>
+  <span style="background:var(--green);color:white;padding:2px 8px;border-radius:4px;font-size:12px">PASS</span>
+  <span style="color:var(--muted);font-size:12px;min-width:80px">0 findings</span>
+  <span style="width:100px"><div class="pb"><div class="pf" style="width:100%;background:var(--green)"></div></div></span>
+</div>
+</div>
+<hr class="dv">
+<div class="sb an d4" style="border-color:var(--red)">
+  <h3 style="color:var(--red)">⚠ CRITICAL GAPS</h3>
+  <div class="sr"><span class="sl">A03 — Injection:</span><span class="sv">18 findings · SQL injection, command injection, XSS, SSTI</span></div>
+  <div class="sr"><span class="sl">A02 — Crypto:</span><span class="sv">9 findings · MD5 passwords, hardcoded keys, SSL disabled</span></div>
+  <div class="sr"><span class="sl">A06 — Components:</span><span class="sv">11 findings · PyYAML, Jinja2, Django, lodash, axios, jsonwebtoken</span></div>
+  <div class="sr"><span class="sl">Priority:</span><span class="sv">Rotate secrets immediately → Fix injections → Update deps → Review access control</span></div>
+</div></div>
+<div class="fbar"><span>hyperium-code-audit v1.0.0</span><span>41 tests · 22 rules · 20 secret patterns</span><span>hyperiumia</span></div>
+</div></body></html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en"><head><title>Findings Detail — Hyperium Code-Audit</title><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a25;--border:#2a2a3a;--text:#e8e8f0;--muted:#6a6a80;--accent:#7c3aed;--accent2:#a78bfa;--green:#10b981;--red:#ef4444;--yellow:#f59e0b;--blue:#3b82f6;--cyan:#06b6d4;--orange:#f97316}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;padding:24px;min-height:100vh}
+.term{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 25px 50px rgba(0,0,0,.5);max-width:1100px;margin:0 auto}
+.bar{background:var(--surface2);padding:12px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--border)}
+.dot{width:12px;height:12px;border-radius:50%}.dr{background:#ff5f56}.dy{background:#ffbd2e}.dg{background:#27c93f}
+.bt{flex:1;text-align:center;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--muted);margin-right:60px}
+.tb{padding:20px 24px;font-family:'JetBrains Mono',monospace;font-size:13px;line-height:1.6;overflow-x:auto}
+.hd{background:linear-gradient(135deg,#1a1030,#0f1a2e);border:1px solid var(--accent);border-radius:8px;padding:20px 24px;margin-bottom:16px}
+.hd h1{font-family:'Inter',sans-serif;font-size:18px;font-weight:800;background:linear-gradient(90deg,var(--accent2),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:4px}
+.hd p{color:var(--muted);font-size:12px}
+.dv{border:none;border-top:1px solid var(--border);margin:12px 0}
+.mr{display:flex;gap:16px;margin:12px 0}
+.mc{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px 18px;flex:1;text-align:center}
+.mv{font-size:24px;font-weight:700;font-family:'Inter',sans-serif}
+.ml{font-size:11px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+.th{display:flex;background:var(--surface2);padding:8px 12px;border-radius:6px 6px 0 0;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);border:1px solid var(--border)}
+.tr{display:flex;padding:8px 12px;border-left:1px solid var(--border);border-right:1px solid var(--border);border-bottom:1px solid var(--border);font-size:12px;align-items:center}
+.tr:hover{background:var(--surface2)}
+.c{padding:0 8px}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.bc{background:#7f1d1d;color:var(--red)}.bh{background:#7c2d12;color:var(--orange)}.bm{background:#78350f;color:var(--yellow)}.bl{background:#065f46;color:var(--green)}.bi{background:#1e3a5f;color:var(--blue)}
+.pb{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;margin:4px 0}
+.pf{height:100%;border-radius:3px}
+.sb{background:linear-gradient(135deg,#0f1a0f,#0a1520);border:1px solid var(--green);border-radius:8px;padding:16px 20px;margin:12px 0}
+.sb h3{color:var(--green);font-size:14px;margin-bottom:8px}
+.sr{display:flex;padding:4px 0;font-size:12px}.sl{color:var(--muted);min-width:160px}.sv{color:var(--text)}
+.fbar{background:var(--surface2);padding:8px 16px;display:flex;justify-content:space-between;font-size:11px;color:var(--muted);border-top:1px solid var(--border)}
+.cap{margin:12px 0}
+.caph{font-size:13px;font-weight:700;padding:8px 12px;background:var(--surface2);border-left:3px solid var(--accent);border-radius:0 6px 6px 0;margin-bottom:8px}
+.capi{padding:8px 14px;border-left:3px solid var(--border);margin:4px 0 4px 12px;font-size:12px}
+.tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;margin-right:4px}
+.tp1{background:#7f1d1d;color:var(--red)}.tp2{background:#78350f;color:var(--yellow)}.tp3{background:#1e3a5f;color:var(--blue)}
+.od{color:var(--muted)}.og{color:var(--green)}.ow{color:var(--yellow)}.or2{color:var(--red)}.oc{color:var(--cyan)}.ob{color:var(--blue)}
+.pr{color:var(--green)}.pp{color:var(--accent2)}.pk{color:var(--text)}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.an{animation:fi .4s ease forwards}
+.d1{animation-delay:.1s;opacity:0}.d2{animation-delay:.2s;opacity:0}.d3{animation-delay:.3s;opacity:0}.d4{animation-delay:.4s;opacity:0}
+</style></head>
+<body><div class="term an">
+<div class="bar"><div class="dot dr"></div><div class="dot dy"></div><div class="dot dg"></div><div class="bt">hyperium-code-audit · scan ./acme-webapp --format detail</div></div>
+<div class="tb">
+<div class="hd an d1">
+  <h1>📋 SECURITY FINDINGS — OWASP TOP 10</h1>
+  <p>47 findings across 28 files · 22 pattern rules triggered · 8 language AST analysis</p>
+</div>
+<div class="th an d2"><div class="c" style="width:90px">Severity</div><div class="c" style="flex:1">Finding</div><div class="c" style="width:200px">Location</div><div class="c" style="width:80px">Confidence</div></div>
+<div class="tr an d2"><div class="c" style="width:90px"><span class="badge bc">CRITICAL</span></div><div class="c" style="flex:1"><strong>SQL Injection via string concatenation</strong><br/><span class="od">GEN-SEC-001 · CWE-89 · A03</span></div><div class="c" style="width:200px"><code>utils/db_connector.py:47</code></div><div class="c" style="width:80px">95%</div></div>
+<div class="tr an d2"><div class="c" style="width:90px"><span class="badge bc">CRITICAL</span></div><div class="c" style="flex:1"><strong>OS Command Injection (AST verified)</strong><br/><span class="od">AST-PY-078 · CWE-78 · A03</span></div><div class="c" style="width:200px"><code>utils/system.py:12</code></div><div class="c" style="width:80px">90%</div></div>
+<div class="tr an d3"><div class="c" style="width:90px"><span class="badge bc">CRITICAL</span></div><div class="c" style="flex:1"><strong>Insecure deserialization via pickle (AST)</strong><br/><span class="od">AST-PY-502 · CWE-502 · A08</span></div><div class="c" style="width:200px"><code>services/cache.py:89</code></div><div class="c" style="width:80px">95%</div></div>
+<div class="tr an d3"><div class="c" style="width:90px"><span class="badge bc">CRITICAL</span></div><div class="c" style="flex:1"><strong>Plaintext password storage</strong><br/><span class="od">GEN-SEC-060 · CWE-256 · A07</span></div><div class="c" style="width:200px"><code>config/settings.py:3</code></div><div class="c" style="width:80px">60%</div></div>
+<div class="tr an d3"><div class="c" style="width:90px"><span class="badge bh">HIGH</span></div><div class="c" style="flex:1"><strong>DOM-based XSS via innerHTML</strong><br/><span class="od">GEN-SEC-020 · CWE-79 · A03</span></div><div class="c" style="width:200px"><code>frontend/profile.js:34</code></div><div class="c" style="width:80px">70%</div></div>
+<div class="tr an d3"><div class="c" style="width:90px"><span class="badge bh">HIGH</span></div><div class="c" style="flex:1"><strong>Weak hash (MD5) for passwords</strong><br/><span class="od">GEN-SEC-030 · CWE-328 · A02</span></div><div class="c" style="width:200px"><code>auth/hasher.py:18</code></div><div class="c" style="width:80px">90%</div></div>
+<div class="tr an d4"><div class="c" style="width:90px"><span class="badge bh">HIGH</span></div><div class="c" style="flex:1"><strong>SSRF via requests.get with user URL</strong><br/><span class="od">GEN-SEC-040 · CWE-918 · A10</span></div><div class="c" style="width:200px"><code>api/webhook_handler.py:56</code></div><div class="c" style="width:80px">70%</div></div>
+<div class="tr an d4"><div class="c" style="width:90px"><span class="badge bh">HIGH</span></div><div class="c" style="flex:1"><strong>SSL verification disabled (AST verified)</strong><br/><span class="od">AST-PY-295 · CWE-295 · A02</span></div><div class="c" style="width:200px"><code>integrations/stripe_client.py:7</code></div><div class="c" style="width:80px">95%</div></div>
+<div class="tr an d4"><div class="c" style="width:90px"><span class="badge bm">MEDIUM</span></div><div class="c" style="flex:1"><strong>Debug mode enabled in production</strong><br/><span class="od">GEN-SEC-090 · CWE-489 · A05</span></div><div class="c" style="width:200px"><code>config/settings.py:1</code></div><div class="c" style="width:80px">80%</div></div>
+<div class="tr an d4"><div class="c" style="width:90px"><span class="badge bm">MEDIUM</span></div><div class="c" style="flex:1"><strong>Path Traversal in file operations</strong><br/><span class="od">GEN-SEC-050 · CWE-22 · A01</span></div><div class="c" style="width:200px"><code>api/file_handler.py:23</code></div><div class="c" style="width:80px">70%</div></div>
+<hr class="dv">
+<div style="font-size:11px;color:var(--muted)" class="an d4">Showing 10 of 47 pattern findings · Sort: severity desc · AST engine: Python only</div></div>
+<div class="fbar"><span>hyperium-code-audit v1.0.0</span><span>41 tests · 22 rules · 20 secret patterns</span><span>hyperiumia</span></div>
+</div></body></html>
