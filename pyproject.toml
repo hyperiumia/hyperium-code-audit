@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "hyperium-code-audit"
+version = "1.0.0"
+description = "Production-grade source code security scanner"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [{name = "Hyperium IA"}]
+keywords = ["security", "scanner", "owasp", "sast", "code-audit"]
+dependencies = [
+    "pydantic>=2.0",
+    "rich>=13.0",
+    "click>=8.0",
+    "requests>=2.28",
+    "pyyaml>=6.0",
+    "jinja2>=3.0",
+]
+
+[project.scripts]
+code-audit = "src.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
