@@ -29,6 +29,10 @@ from src.payment_scanner import PaymentScanner
 from src.dep_analyzer import DepAnalyzer
 from src.ast_engine import ASTEngine
 from src.taint_analyzer import TaintAnalyzer
+from src.js_ast_engine import JSASTEngine
+from src.payment_logic import PaymentLogicAnalyzer
+from src.secret_verifier import verify_secret_format
+from src.scan_history import ScanHistory
 from src.triage_engine import TriageEngine
 from src.compliance_mapper import ComplianceMapper
 from src.checkpoint_manager import CheckpointManager
@@ -76,6 +80,9 @@ class CodeAuditEngine:
         )
         self.ast_engine = ASTEngine()
         self.taint_analyzer = TaintAnalyzer()
+        self.js_ast_engine = JSASTEngine()
+        self.payment_logic = PaymentLogicAnalyzer()
+        self.scan_history = ScanHistory()
         self.triage_engine = TriageEngine(
             critical_paths=self.config.analysis.asset_criticality.get("critical_paths", []),
         )
@@ -133,6 +140,8 @@ class CodeAuditEngine:
                     result.findings.extend(self.ast_engine.scan_file(fp, lang))
                 if self.config.scanners.taint_analyzer and lang.value == "python":
                     result.findings.extend(self.taint_analyzer.scan_file(fp))
+                if self.config.scanners.js_ast_engine and lang.value in ("javascript", "typescript"):
+                    result.findings.extend(self.js_ast_engine.scan_file(fp, lang))
                 self.checkpoint_mgr.record_progress(1)
                 if (i + 1) % 100 == 0:
                     self._report("SCAN", f"Scanned {i+1}/{len(source_files)} files", 15 + int(30 * i / max(len(source_files), 1)))
@@ -143,6 +152,13 @@ class CodeAuditEngine:
             self.checkpoint_mgr.update_phase("secret_scan")
             if self.config.scanners.secret_detector:
                 result.secrets = self.secret_detector.scan_files(source_files)
+            if self.config.scanners.verify_secrets:
+                for s in result.secrets:
+                    vr = verify_secret_format(s.secret_type, s.redacted_value)
+                    if vr.is_valid_format:
+                        s.confidence = min(1.0, s.confidence + vr.confidence_boost)
+                    elif vr.confidence_boost < 0:
+                        s.confidence = max(0.1, s.confidence + vr.confidence_boost)
             self.checkpoint_mgr.complete_phase("secret_scan")
 
             # Phase 4: Payment scanning
@@ -150,6 +166,10 @@ class CodeAuditEngine:
             self.checkpoint_mgr.update_phase("payment_scan")
             if self.config.scanners.payment_scanner:
                 result.payment_findings = self.payment_scanner.scan_files(source_files)
+            if self.config.scanners.payment_logic:
+                for fp in source_files:
+                    if fp.suffix in ('.py', '.js', '.ts'):
+                        result.findings.extend(self.payment_logic.scan_file(fp))
             self.checkpoint_mgr.complete_phase("payment_scan")
 
             # Phase 5: Dependency analysis
@@ -179,6 +199,9 @@ class CodeAuditEngine:
                 result.findings, result.payment_findings,
             )
             self.checkpoint_mgr.complete_phase("compliance")
+
+            # Phase 8: Save scan history
+            self.scan_history.save_scan(result)
 
         except Exception as e:
             logger.error(f"Scan failed: {e}", exc_info=True)
