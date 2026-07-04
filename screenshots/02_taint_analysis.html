@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Taint Analysis — Data Flow Tracking</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0e17;
+  --surface: #111827;
+  --surface-2: #1e293b;
+  --border: #1e293b;
+  --accent: #06b6d4;
+  --critical: #ef4444;
+  --high: #f97316;
+  --medium: #eab308;
+  --low: #22c55e;
+  --text: #f1f5f9;
+  --text-muted: #64748b;
+  --text-dim: #475569;
+  --source: #f472b6;
+  --sanitizer: #a78bfa;
+  --sink: #ef4444;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Space Grotesk', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 32px;
+}
+.container { max-width: 1100px; margin: 0 auto; }
+
+.terminal-bar {
+  background: #1a1a2e;
+  border-radius: 12px 12px 0 0;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.terminal-dot { width: 12px; height: 12px; border-radius: 50%; }
+.dot-red { background: #ff5f56; }
+.dot-yellow { background: #ffbd2e; }
+.dot-green { background: #27c93f; }
+.terminal-title { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-muted); margin-left: 12px; }
+.terminal-body {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  padding: 24px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 40px;
+}
+.prompt { color: var(--accent); }
+.cmd { color: #a5f3fc; }
+.output { color: #94a3b8; }
+
+.page-header {
+  margin-bottom: 32px;
+}
+.page-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--source), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.page-header .subtitle {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+/* Flow Diagram */
+.flow-diagram {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  margin-bottom: 32px;
+  position: relative;
+}
+.flow-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  color: var(--text-muted);
+}
+
+.flow-pipeline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  flex-wrap: wrap;
+}
+
+.flow-node {
+  padding: 16px 24px;
+  border-radius: 12px;
+  text-align: center;
+  position: relative;
+  min-width: 160px;
+}
+.flow-node .label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+.flow-node .value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.flow-node.source {
+  background: rgba(244, 114, 182, 0.1);
+  border: 1px solid rgba(244, 114, 182, 0.3);
+}
+.flow-node.source .label { color: var(--source); }
+.flow-node.source .value { color: #fda4af; }
+
+.flow-node.sanitizer {
+  background: rgba(167, 139, 250, 0.1);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+}
+.flow-node.sanitizer .label { color: var(--sanitizer); }
+.flow-node.sanitizer .value { color: #c4b5fd; }
+.flow-node.sanitizer.missing {
+  border-style: dashed;
+  opacity: 0.5;
+}
+.flow-node.sanitizer.missing .value { text-decoration: line-through; }
+
+.flow-node.sink {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.flow-node.sink .label { color: var(--sink); }
+.flow-node.sink .value { color: #fca5a5; }
+
+.flow-arrow {
+  font-size: 24px;
+  color: var(--text-dim);
+  padding: 0 12px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.flow-arrow.danger {
+  color: var(--critical);
+  animation: blink 1.5s infinite;
+}
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* Code View */
+.code-view {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+.code-header {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.code-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+}
+.code-header .file-path {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.code-body {
+  padding: 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.8;
+  overflow-x: auto;
+}
+.code-line {
+  padding: 2px 24px;
+  display: flex;
+  gap: 16px;
+  white-space: pre;
+}
+.code-line.highlight-source {
+  background: rgba(244, 114, 182, 0.08);
+  border-left: 3px solid var(--source);
+}
+.code-line.highlight-sanitizer {
+  background: rgba(167, 139, 250, 0.08);
+  border-left: 3px solid var(--sanitizer);
+}
+.code-line.highlight-sink {
+  background: rgba(239, 68, 68, 0.08);
+  border-left: 3px solid var(--sink);
+}
+.line-num {
+  color: var(--text-dim);
+  width: 32px;
+  text-align: right;
+  user-select: none;
+  flex-shrink: 0;
+}
+.line-code { color: #cbd5e1; }
+.line-code .kw { color: #c084fc; }
+.line-code .fn { color: #67e8f9; }
+.line-code .str { color: #86efac; }
+.line-code .cm { color: #475569; font-style: italic; }
+.line-code .var { color: #fda4af; }
+
+.annotation {
+  display: inline-block;
+  margin-left: 16px;
+  padding: 1px 10px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  vertical-align: middle;
+}
+.annotation.source-tag {
+  background: rgba(244, 114, 182, 0.2);
+  color: var(--source);
+  border: 1px solid rgba(244, 114, 182, 0.3);
+}
+.annotation.sanitizer-tag {
+  background: rgba(167, 139, 250, 0.2);
+  color: var(--sanitizer);
+  border: 1px solid rgba(167, 139, 250, 0.3);
+}
+.annotation.sink-tag {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--sink);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.annotation.safe-tag {
+  background: rgba(34, 197, 94, 0.2);
+  color: var(--low);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+/* Finding Card */
+.finding-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+.finding-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 4px;
+}
+.finding-card.taint-critical::before { background: var(--critical); }
+.finding-card.taint-high::before { background: var(--high); }
+
+.finding-card .finding-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+.finding-card h3 { font-size: 18px; font-weight: 600; }
+.finding-card .badge-row { display: flex; gap: 8px; }
+.badge {
+  padding: 3px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+.badge-critical { background: rgba(239,68,68,0.15); color: var(--critical); }
+.badge-owasp { background: rgba(6,182,212,0.15); color: var(--accent); }
+.badge-cwe { background: rgba(139,92,246,0.15); color: #a78bfa; }
+
+.finding-card .description {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.meta-row {
+  display: flex;
+  gap: 24px;
+  font-size: 12px;
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+}
+.meta-item { display: flex; align-items: center; gap: 6px; }
+.meta-item .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+.footer {
+  text-align: center;
+  padding: 32px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- Terminal -->
+  <div class="terminal-bar">
+    <div class="terminal-dot dot-red"></div>
+    <div class="terminal-dot dot-yellow"></div>
+    <div class="terminal-dot dot-green"></div>
+    <span class="terminal-title">Taint Analysis Results — ~/my-saas-app</span>
+  </div>
+  <div class="terminal-body">
+    <div><span class="prompt">❯ </span><span class="cmd">code-audit scan ./my-saas-app --format html --verbose 2>&1 | grep TAINT</span></div>
+    <br>
+    <div><span class="output">[TAINT] Analyzing data flow in 89 Python files...</span></div>
+    <div><span class="output">[TAINT]   Found 12 sources (Flask request.args, request.form, request.json)</span></div>
+    <div><span class="output">[TAINT]   Found 8 sinks (cursor.execute, os.system, eval, requests.get)</span></div>
+    <div><span class="output">[TAINT]   Found 5 sanitizers (int(), escape(), parameterized queries)</span></div>
+    <div><span class="output" style="color:#ef4444">[TAINT] ⚠ app/api/users.py:47 — UNTRUSTED → cursor.execute() [NO SANITIZER]</span></div>
+    <div><span class="output" style="color:#ef4444">[TAINT] ⚠ lib/worker.py:23 — UNTRUSTED → os.system() [NO SANITIZER]</span></div>
+    <div><span class="output" style="color:#ef4444">[TAINT] ⚠ app/utils/search.py:15 — UNTRUSTED → eval() [NO SANITIZER]</span></div>
+    <div><span class="output" style="color:#22c55e">[TAINT] ✓ app/api/items.py:31 — UNTRUSTED → int() → cursor.execute() [SANITIZED]</span></div>
+    <div><span class="output" style="color:#ef4444">[TAINT] ⚠ app/api/orders.py:67 — UNTRUSTED → requests.get() [NO SANITIZER]</span></div>
+    <br>
+    <div><span class="output">[TAINT] Analysis complete: 3 vulnerable flows, 2 sanitized flows</span></div>
+  </div>
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>Taint Analysis Results</h1>
+    <div class="subtitle">Python data-flow tracking: sources → sanitizers → sinks</div>
+  </div>
+
+  <!-- Finding 1: SQL Injection (no sanitizer) -->
+  <div class="finding-card taint-critical">
+    <div class="finding-header">
+      <h3>Tainted flow: SQL Injection</h3>
+      <div class="badge-row">
+        <span class="badge badge-critical">CRITICAL</span>
+        <span class="badge badge-owasp">A03:2021</span>
+        <span class="badge badge-cwe">CWE-89</span>
+      </div>
+    </div>
+    <div class="description">
+      User input from <strong>request.args.get("id")</strong> flows directly into <strong>cursor.execute()</strong> without sanitization.
+      An attacker can inject arbitrary SQL by manipulating the <code>id</code> query parameter.
+    </div>
+
+    <!-- Flow Diagram -->
+    <div class="flow-diagram" style="margin-bottom:20px;padding:20px;">
+      <div class="flow-pipeline">
+        <div class="flow-node source">
+          <div class="label">Source</div>
+          <div class="value">request.args<br>.get("id")</div>
+        </div>
+        <div class="flow-arrow danger">→</div>
+        <div class="flow-node sanitizer missing">
+          <div class="label">Sanitizer ✗</div>
+          <div class="value">int() / escape()<br>NOT FOUND</div>
+        </div>
+        <div class="flow-arrow danger">→</div>
+        <div class="flow-node sink">
+          <div class="label">Sink</div>
+          <div class="value">cursor.execute()<br>"SELECT * ..."</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Code View -->
+    <div class="code-view">
+      <div class="code-header">
+        <h3>Vulnerable Code</h3>
+        <span class="file-path">app/api/users.py</span>
+      </div>
+      <div class="code-body">
+        <div class="code-line"><span class="line-num">43</span><span class="line-code"><span class="kw">from</span> flask <span class="kw">import</span> request</span></div>
+        <div class="code-line"><span class="line-num">44</span><span class="line-code"></span></div>
+        <div class="code-line"><span class="line-num">45</span><span class="line-code"><span class="kw">@app.route</span>(<span class="str">'/api/users'</span>)</span></div>
+        <div class="code-line"><span class="line-num">46</span><span class="line-code"><span class="kw">def</span> <span class="fn">get_user</span>():</span></div>
+        <div class="code-line highlight-source"><span class="line-num">47</span><span class="line-code">    uid = request.args.<span class="fn">get</span>(<span class="str">"id"</span>) <span class="annotation source-tag">SOURCE</span></span></div>
+        <div class="code-line"><span class="line-num">48</span><span class="line-code">    conn = sqlite3.<span class="fn">connect</span>(<span class="str">'app.db'</span>)</span></div>
+        <div class="code-line"><span class="line-num">49</span><span class="line-code">    c = conn.<span class="fn">cursor</span>()</span></div>
+        <div class="code-line highlight-sink"><span class="line-num">50</span><span class="line-code">    c.<span class="fn">execute</span>(<span class="str">"SELECT * FROM users WHERE id = "</span> + <span class="var">uid</span>) <span class="annotation sink-tag">SINK</span></span></div>
+        <div class="code-line"><span class="line-num">51</span><span class="line-code">    <span class="kw">return</span> c.<span class="fn">fetchone</span>()</span></div>
+      </div>
+    </div>
+
+    <div class="meta-row">
+      <div class="meta-item"><div class="dot" style="background:var(--critical)"></div> Confidence: 95%</div>
+      <div class="meta-item">File: app/api/users.py</div>
+      <div class="meta-item">Line: 47 → 50</div>
+      <div class="meta-item">Flow: direct (1 hop)</div>
+    </div>
+  </div>
+
+  <!-- Finding 2: Command Injection -->
+  <div class="finding-card taint-critical">
+    <div class="finding-header">
+      <h3>Tainted flow: Command Injection</h3>
+      <div class="badge-row">
+        <span class="badge badge-critical">CRITICAL</span>
+        <span class="badge badge-owasp">A03:2021</span>
+        <span class="badge badge-cwe">CWE-78</span>
+      </div>
+    </div>
+    <div class="description">
+      User input from <strong>request.json.get("host")</strong> flows into <strong>os.system()</strong> via f-string interpolation.
+      No input validation or allowlist check is performed.
+    </div>
+
+    <div class="flow-diagram" style="margin-bottom:20px;padding:20px;">
+      <div class="flow-pipeline">
+        <div class="flow-node source">
+          <div class="label">Source</div>
+          <div class="value">request.json<br>.get("host")</div>
+        </div>
+        <div class="flow-arrow danger">→</div>
+        <div class="flow-node sanitizer missing">
+          <div class="label">Sanitizer ✗</div>
+          <div class="value">shlex.quote()<br>NOT FOUND</div>
+        </div>
+        <div class="flow-arrow danger">→</div>
+        <div class="flow-node sink">
+          <div class="label">Sink</div>
+          <div class="value">os.system(f"ping<br>{host}")</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="code-view">
+      <div class="code-header">
+        <h3>Vulnerable Code</h3>
+        <span class="file-path">lib/worker.py</span>
+      </div>
+      <div class="code-body">
+        <div class="code-line"><span class="line-num">19</span><span class="line-code"><span class="kw">import</span> os</span></div>
+        <div class="code-line"><span class="line-num">20</span><span class="line-code"></span></div>
+        <div class="code-line"><span class="line-num">21</span><span class="line-code"><span class="kw">@app.route</span>(<span class="str">'/api/ping'</span>, methods=[<span class="str">'POST'</span>])</span></div>
+        <div class="code-line"><span class="line-num">22</span><span class="line-code"><span class="kw">def</span> <span class="fn">ping_host</span>():</span></div>
+        <div class="code-line highlight-source"><span class="line-num">23</span><span class="line-code">    host = request.json.<span class="fn">get</span>(<span class="str">"host"</span>) <span class="annotation source-tag">SOURCE</span></span></div>
+        <div class="code-line highlight-sink"><span class="line-num">24</span><span class="line-code">    os.<span class="fn">system</span>(<span class="str">f"ping -c 1 {</span><span class="var">host</span><span class="str">}"</span>) <span class="annotation sink-tag">SINK</span></span></div>
+        <div class="code-line"><span class="line-num">25</span><span class="line-code">    <span class="kw">return</span> {<span class="str">"status"</span>: <span class="str">"ok"</span>}</span></div>
+      </div>
+    </div>
+
+    <div class="meta-row">
+      <div class="meta-item"><div class="dot" style="background:var(--critical)"></div> Confidence: 92%</div>
+      <div class="meta-item">File: lib/worker.py</div>
+      <div class="meta-item">Line: 23 → 24</div>
+      <div class="meta-item">Flow: direct (1 hop)</div>
+    </div>
+  </div>
+
+  <!-- Finding 3: Sanitized (safe) -->
+  <div class="finding-card" style="border-color:rgba(34,197,94,0.3);">
+    <div style="position:absolute;top:0;left:0;bottom:0;width:4px;background:var(--low);"></div>
+    <div class="finding-header">
+      <h3 style="color:var(--low)">✓ Sanitized flow: SQL Injection (SAFE)</h3>
+      <div class="badge-row">
+        <span class="badge" style="background:rgba(34,197,94,0.15);color:var(--low);">SANITIZED</span>
+      </div>
+    </div>
+    <div class="description">
+      User input passes through <strong>int()</strong> before reaching the SQL sink. The integer conversion prevents SQL injection.
+      This flow is <strong>not flagged as vulnerable</strong> — shown here for educational purposes.
+    </div>
+
+    <div class="flow-diagram" style="margin-bottom:20px;padding:20px;">
+      <div class="flow-pipeline">
+        <div class="flow-node source">
+          <div class="label">Source</div>
+          <div class="value">request.args<br>.get("item_id")</div>
+        </div>
+        <div class="flow-arrow" style="color:var(--low)">→</div>
+        <div class="flow-node sanitizer" style="background:rgba(34,197,94,0.1);border-color:rgba(34,197,94,0.3);">
+          <div class="label" style="color:var(--low)">Sanitizer ✓</div>
+          <div class="value" style="color:#86efac">int(item_id)</div>
+        </div>
+        <div class="flow-arrow" style="color:var(--low)">→</div>
+        <div class="flow-node sink" style="background:rgba(34,197,94,0.1);border-color:rgba(34,197,94,0.3);">
+          <div class="label" style="color:var(--low)">Sink (safe)</div>
+          <div class="value" style="color:#86efac">cursor.execute()</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="meta-row">
+      <div class="meta-item"><div class="dot" style="background:var(--low)"></div> Confidence: — (sanitized)</div>
+      <div class="meta-item">File: app/api/items.py</div>
+      <div class="meta-item">Sanitizer: int() at line 31</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>Hyperium Code-Audit v3.0.0 — Taint Analysis Engine</p>
+    <p style="margin-top:4px;">Sources: Flask/Django/FastAPI request data · Sinks: SQL, cmd, eval, file, SSRF · Sanitizers: int(), escape(), parameterized</p>
+  </div>
+</div>
+</body>
+</html>

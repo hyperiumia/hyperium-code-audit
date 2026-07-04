@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment Gateway Detection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0e17;
+  --surface: #111827;
+  --surface-2: #1e293b;
+  --border: #1e293b;
+  --accent: #06b6d4;
+  --critical: #ef4444;
+  --high: #f97316;
+  --medium: #eab308;
+  --low: #22c55e;
+  --text: #f1f5f9;
+  --text-muted: #64748b;
+  --text-dim: #475569;
+  --stripe: #635bff;
+  --mp: #00a4e8;
+  --paypal: #003087;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Space Grotesk', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 32px;
+}
+.container { max-width: 1100px; margin: 0 auto; }
+
+.terminal-bar {
+  background: #1a1a2e;
+  border-radius: 12px 12px 0 0;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.terminal-dot { width: 12px; height: 12px; border-radius: 50%; }
+.dot-red { background: #ff5f56; }
+.dot-yellow { background: #ffbd2e; }
+.dot-green { background: #27c93f; }
+.terminal-title { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-muted); margin-left: 12px; }
+.terminal-body {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  padding: 24px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 40px;
+}
+.prompt { color: var(--accent); }
+.cmd { color: #a5f3fc; }
+.output { color: #94a3b8; }
+
+.page-header { margin-bottom: 32px; }
+.page-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #635bff, #00a4e8, #22c55e);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.page-header .subtitle { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
+
+/* Gateway Cards */
+.gateway-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-bottom: 32px;
+}
+.gateway-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s;
+}
+.gateway-card:hover { transform: translateY(-2px); }
+.gateway-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+}
+.gateway-card.stripe-card::before { background: var(--stripe); }
+.gateway-card.mp-card::before { background: var(--mp); }
+.gateway-card.paypal-card::before { background: var(--paypal); }
+.gateway-card.culqi-card::before { background: #ff6b35; }
+
+.gateway-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.gateway-name {
+  font-size: 18px;
+  font-weight: 700;
+}
+.gateway-name.stripe-color { color: var(--stripe); }
+.gateway-name.mp-color { color: var(--mp); }
+.gateway-name.paypal-color { color: var(--paypal); }
+.gateway-name.culqi-color { color: #ff6b35; }
+
+.key-type {
+  padding: 3px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+.key-type.live {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--critical);
+}
+.key-type.test {
+  background: rgba(234, 179, 8, 0.15);
+  color: var(--medium);
+}
+
+.key-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 12px 16px;
+  background: var(--surface-2);
+  border-radius: 8px;
+  margin-bottom: 16px;
+  word-break: break-all;
+}
+.key-value .highlight { color: var(--critical); font-weight: 600; }
+.key-value .masked { color: var(--text-dim); }
+
+.gateway-meta {
+  display: flex;
+  gap: 20px;
+  font-size: 12px;
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+}
+.gateway-meta .pci-flag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--critical);
+  font-weight: 600;
+}
+
+/* Logic Findings */
+.logic-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 32px;
+}
+.logic-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.logic-header h2 { font-size: 18px; font-weight: 600; }
+.logic-badge {
+  padding: 3px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+}
+
+.logic-items { padding: 0; }
+.logic-item {
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(30, 41, 59, 0.5);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: start;
+}
+.logic-item:last-child { border-bottom: none; }
+.logic-item:hover { background: rgba(6, 182, 212, 0.02); }
+
+.logic-item h4 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+.logic-item p { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+.logic-item .location {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 6px;
+}
+.logic-item .severity-badge {
+  padding: 3px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  white-space: nowrap;
+}
+.sev-critical { background: rgba(239,68,68,0.15); color: var(--critical); }
+.sev-high { background: rgba(249,115,22,0.15); color: var(--high); }
+
+/* Summary Stats */
+.payment-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+.pay-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+}
+.pay-stat .num {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+}
+.pay-stat .lbl {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+.pay-stat:nth-child(1) .num { color: var(--critical); }
+.pay-stat:nth-child(2) .num { color: var(--high); }
+.pay-stat:nth-child(3) .num { color: #a78bfa; }
+.pay-stat:nth-child(4) .num { color: var(--accent); }
+
+.footer {
+  text-align: center;
+  padding: 32px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- Terminal -->
+  <div class="terminal-bar">
+    <div class="terminal-dot dot-red"></div>
+    <div class="terminal-dot dot-yellow"></div>
+    <div class="terminal-dot dot-green"></div>
+    <span class="terminal-title">Payment Detection — ~/my-saas-app</span>
+  </div>
+  <div class="terminal-body">
+    <div><span class="prompt">❯ </span><span class="cmd">code-audit scan ./my-saas-app --format html</span></div>
+    <br>
+    <div><span style="color:#06b6d4">  PAYMENT</span>    <span class="output">Scanning for payment exposures...</span></div>
+    <br>
+    <div><span class="output" style="color:#ef4444">  [CRITICAL] Stripe LIVE key in config/payments.js:12</span></div>
+    <div><span class="output" style="color:#ef4444">    sk_live_[REDACTED-FOR-DEMO]</span></div>
+    <div><span class="output" style="color:#ef4444">    ⚠ PCI DSS v4.0 §3.2 — Do NOT store PANs or keys in source code</span></div>
+    <br>
+    <div><span class="output" style="color:#f97316">  [HIGH] MercadoPago LIVE token in services/payments.py:34</span></div>
+    <div><span class="output" style="color:#f97316">    APP_USR-1234567890123-0123456789...</span></div>
+    <div><span class="output" style="color:#f97316">    ⚠ PCI DSS v4.0 §3.2 — Do NOT store credentials in source code</span></div>
+    <br>
+    <div><span class="output" style="color:#ef4444">  [CRITICAL] Webhook endpoint without signature verification</span></div>
+    <div><span class="output" style="color:#ef4444">    app/webhooks/stripe.py:8 — POST /stripe-webhook</span></div>
+    <br>
+    <div><span class="output" style="color:#ef4444">  [CRITICAL] Payment amount from client without server validation</span></div>
+    <div><span class="output" style="color:#ef4444">    app/api/checkout.py:34</span></div>
+    <br>
+    <div><span class="output" style="color:#06b6d4">  ✓ Payment scan complete: 4 exposures + 3 logic issues</span></div>
+  </div>
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>Payment Gateway Exposures</h1>
+    <div class="subtitle">7 gateways monitored · PCI DSS v4.0 §3.2 compliance · Payment logic analysis</div>
+  </div>
+
+  <!-- Summary Stats -->
+  <div class="payment-summary">
+    <div class="pay-stat">
+      <div class="num">4</div>
+      <div class="lbl">Keys Exposed</div>
+    </div>
+    <div class="pay-stat">
+      <div class="num">3</div>
+      <div class="lbl">Logic Issues</div>
+    </div>
+    <div class="pay-stat">
+      <div class="num">2</div>
+      <div class="lbl">Live Keys</div>
+    </div>
+    <div class="pay-stat">
+      <div class="num">3</div>
+      <div class="lbl">Gateways Found</div>
+    </div>
+  </div>
+
+  <!-- Gateway Cards -->
+  <div class="gateway-grid">
+    <div class="gateway-card stripe-card">
+      <div class="gateway-header">
+        <span class="gateway-name stripe-color">Stripe</span>
+        <span class="key-type live">LIVE KEY</span>
+      </div>
+      <div class="key-value">
+        <span class="highlight">sk_live_</span><span class="masked">FakeTestKey001234567890abcdef</span>
+      </div>
+      <div class="gateway-meta">
+        <span>config/payments.js:12</span>
+        <span class="pci-flag">⚠ PCI §3.2</span>
+      </div>
+    </div>
+
+    <div class="gateway-card mp-card">
+      <div class="gateway-header">
+        <span class="gateway-name mp-color">MercadoPago</span>
+        <span class="key-type live">LIVE TOKEN</span>
+      </div>
+      <div class="key-value">
+        <span class="highlight">APP_USR-</span><span class="masked">1234567890123-0123456789012-abcdef0123456789abcdef0123456789</span>
+      </div>
+      <div class="gateway-meta">
+        <span>services/payments.py:34</span>
+        <span class="pci-flag">⚠ PCI §3.2</span>
+      </div>
+    </div>
+
+    <div class="gateway-card paypal-card">
+      <div class="gateway-header">
+        <span class="gateway-name paypal-color">PayPal</span>
+        <span class="key-type test">WEBHOOK SECRET</span>
+      </div>
+      <div class="key-value">
+        <span class="highlight">webhook_secret:</span> <span class="masked">"whsec_xxxxxxxxxxxxxxxx"</span>
+      </div>
+      <div class="gateway-meta">
+        <span>config/webhooks.py:8</span>
+        <span class="pci-flag">⚠ PCI §3.2</span>
+      </div>
+    </div>
+
+    <div class="gateway-card culqi-card">
+      <div class="gateway-header">
+        <span class="gateway-name culqi-color">Culqi</span>
+        <span class="key-type test">TEST KEY</span>
+      </div>
+      <div class="key-value">
+        <span class="highlight">tk_test_</span><span class="masked">xxxxxxxxxxxxxxxx</span>
+      </div>
+      <div class="gateway-meta">
+        <span>config/culqi.js:3</span>
+        <span>Low risk (test)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payment Logic Issues -->
+  <div class="logic-section">
+    <div class="logic-header">
+      <h2>Payment Logic Analysis</h2>
+      <span class="logic-badge">3 issues found</span>
+    </div>
+    <div class="logic-items">
+      <div class="logic-item">
+        <div>
+          <h4>Webhook endpoint without signature verification</h4>
+          <p>The <code>/stripe-webhook</code> endpoint processes incoming webhook events without verifying the Stripe-Signature header. Attackers can forge webhook events to mark unpaid orders as paid, confirm fraudulent transactions, or trigger refund operations.</p>
+          <div class="location">app/webhooks/stripe.py:8 — CWE-345 · A07</div>
+        </div>
+        <span class="severity-badge sev-critical">CRITICAL</span>
+      </div>
+
+      <div class="logic-item">
+        <div>
+          <h4>Payment operation without idempotency key</h4>
+          <p><code>stripe.Charge.create()</code> is called without an idempotency_key parameter. Network retries or user double-clicks can create duplicate charges, leading to customer complaints and potential chargebacks.</p>
+          <div class="location">app/api/charges.py:45 — CWE-799 · A04</div>
+        </div>
+        <span class="severity-badge sev-high">HIGH</span>
+      </div>
+
+      <div class="logic-item">
+        <div>
+          <h4>Payment amount from client without server validation</h4>
+          <p>The payment amount is read directly from <code>request.json.get('amount')</code> and passed to the payment gateway. An attacker can modify the amount in transit (e.g., change $99.99 to $0.01) using browser dev tools or a proxy.</p>
+          <div class="location">app/api/checkout.py:34 — CWE-472 · A04</div>
+        </div>
+        <span class="severity-badge sev-high">HIGH</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <p>Hyperium Code-Audit v3.0.0 — Payment Gateway Scanner + Payment Logic Analyzer</p>
+    <p style="margin-top:4px;">7 gateways: Stripe · MercadoPago · PayPal · Conekta · Culqi · Wompi · Square</p>
+  </div>
+</div>
+</body>
+</html>

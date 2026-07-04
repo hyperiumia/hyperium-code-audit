@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scan Trending — Security Posture Over Time</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0e17;
+  --surface: #111827;
+  --surface-2: #1e293b;
+  --border: #1e293b;
+  --accent: #06b6d4;
+  --critical: #ef4444;
+  --high: #f97316;
+  --medium: #eab308;
+  --low: #22c55e;
+  --text: #f1f5f9;
+  --text-muted: #64748b;
+  --text-dim: #475569;
+  --improving: #22c55e;
+  --degrading: #ef4444;
+  --stable: #eab308;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Space Grotesk', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 32px;
+}
+.container { max-width: 1100px; margin: 0 auto; }
+
+.terminal-bar {
+  background: #1a1a2e;
+  border-radius: 12px 12px 0 0;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.terminal-dot { width: 12px; height: 12px; border-radius: 50%; }
+.dot-red { background: #ff5f56; }
+.dot-yellow { background: #ffbd2e; }
+.dot-green { background: #27c93f; }
+.terminal-title { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-muted); margin-left: 12px; }
+.terminal-body {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  padding: 24px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 40px;
+}
+.prompt { color: var(--accent); }
+.cmd { color: #a5f3fc; }
+.output { color: #94a3b8; }
+
+.page-header { margin-bottom: 32px; }
+.page-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--improving), var(--accent));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.page-header .subtitle { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
+
+/* Trend Banner */
+.trend-banner {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(6, 182, 212, 0.1));
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 16px;
+  padding: 32px;
+  margin-bottom: 32px;
+  text-align: center;
+}
+.trend-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+.trend-status {
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--improving);
+  text-shadow: 0 0 30px rgba(34, 197, 94, 0.4);
+}
+.trend-desc {
+  font-size: 16px;
+  color: var(--text-muted);
+  margin-top: 8px;
+}
+.trend-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 12px;
+}
+
+/* Score Comparison */
+.score-comparison {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 24px;
+  align-items: center;
+  margin-bottom: 32px;
+}
+.score-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  text-align: center;
+}
+.score-card .label {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+.score-card .score {
+  font-size: 56px;
+  font-weight: 700;
+  line-height: 1;
+}
+.score-card .level {
+  font-size: 14px;
+  margin-top: 8px;
+  font-weight: 600;
+}
+.score-card .date {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 8px;
+}
+.score-prev .score { color: var(--critical); }
+.score-prev .level { color: var(--critical); }
+.score-curr .score { color: var(--improving); }
+.score-curr .level { color: var(--improving); }
+
+.score-arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.arrow-icon {
+  font-size: 32px;
+  color: var(--improving);
+  animation: arrowPulse 2s infinite;
+}
+@keyframes arrowPulse {
+  0%, 100% { opacity: 1; transform: translateX(0); }
+  50% { opacity: 0.6; transform: translateX(4px); }
+}
+.arrow-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--improving);
+}
+.arrow-pct {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--improving);
+  background: rgba(34, 197, 94, 0.1);
+  padding: 2px 10px;
+  border-radius: 6px;
+}
+
+/* Severity Delta */
+.severity-delta {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 32px;
+}
+.severity-delta h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+.delta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+.delta-item {
+  text-align: center;
+  padding: 20px;
+  background: var(--surface-2);
+  border-radius: 12px;
+}
+.delta-item .level-name {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+.delta-item .counts {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+.delta-item .prev, .delta-item .curr {
+  font-size: 28px;
+  font-weight: 700;
+}
+.delta-item .arrow {
+  font-size: 18px;
+  color: var(--text-dim);
+}
+.delta-item .change {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 8px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  display: inline-block;
+}
+.change-improved {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--improving);
+}
+.change-worsened {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--critical);
+}
+.change-same {
+  background: rgba(100, 116, 139, 0.15);
+  color: var(--text-muted);
+}
+
+.delta-item.crit .level-name { color: var(--critical); }
+.delta-item.high .level-name { color: var(--high); }
+.delta-item.med .level-name { color: var(--medium); }
+.delta-item.low .level-name { color: var(--low); }
+
+/* History Table */
+.history-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 32px;
+}
+.history-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.history-header h2 { font-size: 18px; font-weight: 600; }
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.history-table th {
+  text-align: left;
+  padding: 12px 24px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.history-table td {
+  padding: 14px 24px;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(30, 41, 59, 0.5);
+}
+.history-table tr:hover td { background: rgba(6, 182, 212, 0.03); }
+.history-table .scan-id {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--accent);
+}
+.history-table .score-cell {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+}
+.trend-badge {
+  padding: 2px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+}
+.trend-improving { background: rgba(34,197,94,0.15); color: var(--improving); }
+.trend-stable { background: rgba(234,179,8,0.15); color: var(--stable); }
+.trend-degrading { background: rgba(239,68,68,0.15); color: var(--degrading); }
+
+/* Chart (CSS-only) */
+.chart-container {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 32px;
+}
+.chart-container h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+.chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  height: 200px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+}
+.chart-bar-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+}
+.chart-bar {
+  width: 100%;
+  max-width: 60px;
+  border-radius: 6px 6px 0 0;
+  position: relative;
+  transition: height 1s ease;
+}
+.chart-bar-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-top: 8px;
+}
+.chart-bar-score {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.chart-legend {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.chart-legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+/* New/Fixed Findings */
+.findings-delta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 32px;
+}
+.delta-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+}
+.delta-card h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.delta-card.fixed h3 { color: var(--improving); }
+.delta-card.new h3 { color: var(--critical); }
+.delta-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.delta-item-entry {
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.delta-item-entry .sev {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 4px;
+}
+
+.footer {
+  text-align: center;
+  padding: 32px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="container">
+  <!-- Terminal -->
+  <div class="terminal-bar">
+    <div class="terminal-dot dot-red"></div>
+    <div class="terminal-dot dot-yellow"></div>
+    <div class="terminal-dot dot-green"></div>
+    <span class="terminal-title">Scan Trending — ~/my-saas-app</span>
+  </div>
+  <div class="terminal-body">
+    <div><span class="prompt">❯ </span><span class="cmd">code-audit scan ./my-saas-app --format html</span></div>
+    <br>
+    <div><span class="output">... scan output ...</span></div>
+    <br>
+    <div><span class="prompt">❯ </span><span class="cmd">code-audit trend</span></div>
+    <br>
+    <div><span class="output">Latest scan: SCAN-a3f2e1b4</span></div>
+    <div><span class="output">  Risk Score: 28/100</span></div>
+    <div><span class="output">  Findings: 15</span></div>
+    <div><span class="output">  Date: 2026-07-05 14:23:41</span></div>
+    <br>
+    <div><span class="output">Previous scan: SCAN-8b1d4e9f</span></div>
+    <br>
+    <div><span style="color:#22c55e;font-weight:600">Trend: ↓ IMPROVING</span></div>
+    <div><span class="output">Risk Score: 78 → 28 (-50.0, -64.1%)</span></div>
+    <div><span class="output">Findings: 42 → 15 (+2 new, -29 fixed)</span></div>
+    <div><span class="output">  critical: 5 → 1 (-4)</span></div>
+    <div><span class="output">  high: 12 → 4 (-8)</span></div>
+    <div><span class="output">  medium: 18 → 7 (-11)</span></div>
+    <div><span class="output">  low: 7 → 3 (-4)</span></div>
+  </div>
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>Security Posture Trending</h1>
+    <div class="subtitle">Tracking risk score, findings, and severity distribution over time</div>
+  </div>
+
+  <!-- Trend Banner -->
+  <div class="trend-banner">
+    <div class="trend-icon">↓</div>
+    <div class="trend-status">IMPROVING</div>
+    <div class="trend-desc">Risk score dropped 64.1% over the last 5 scans</div>
+    <div class="trend-sub">42 findings → 15 findings · 29 fixed · 2 new</div>
+  </div>
+
+  <!-- Score Comparison -->
+  <div class="score-comparison">
+    <div class="score-card score-prev">
+      <div class="label">Previous Scan</div>
+      <div class="score">78</div>
+      <div class="level">CRITICAL</div>
+      <div class="date">2026-06-28 09:15:22</div>
+    </div>
+    <div class="score-arrow">
+      <div class="arrow-icon">→</div>
+      <div class="arrow-label">-50</div>
+      <div class="arrow-pct">-64.1%</div>
+    </div>
+    <div class="score-card score-curr">
+      <div class="label">Current Scan</div>
+      <div class="score">28</div>
+      <div class="level">MEDIUM</div>
+      <div class="date">2026-07-05 14:23:41</div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="chart-container">
+    <h3>Risk Score History</h3>
+    <div class="chart-bars">
+      <div class="chart-bar-group">
+        <div class="chart-bar-score" style="color:var(--critical)">92</div>
+        <div class="chart-bar" style="height:92%;background:linear-gradient(to top,rgba(239,68,68,0.3),rgba(239,68,68,0.8))"></div>
+        <div class="chart-bar-label">Jun 14</div>
+      </div>
+      <div class="chart-bar-group">
+        <div class="chart-bar-score" style="color:var(--critical)">85</div>
+        <div class="chart-bar" style="height:85%;background:linear-gradient(to top,rgba(239,68,68,0.3),rgba(239,68,68,0.7))"></div>
+        <div class="chart-bar-label">Jun 18</div>
+      </div>
+      <div class="chart-bar-group">
+        <div class="chart-bar-score" style="color:var(--critical)">78</div>
+        <div class="chart-bar" style="height:78%;background:linear-gradient(to top,rgba(239,68,68,0.3),rgba(249,115,22,0.7))"></div>
+        <div class="chart-bar-label">Jun 22</div>
+      </div>
+      <div class="chart-bar-group">
+        <div class="chart-bar-score" style="color:var(--critical)">78</div>
+        <div class="chart-bar" style="height:78%;background:linear-gradient(to top,rgba(239,68,68,0.3),rgba(249,115,22,0.7))"></div>
+        <div class="chart-bar-label">Jun 28</div>
+      </div>
+      <div class="chart-bar-group">
+        <div class="chart-bar-score" style="color:var(--improving)">28</div>
+        <div class="chart-bar" style="height:28%;background:linear-gradient(to top,rgba(34,197,94,0.3),rgba(34,197,94,0.7))"></div>
+        <div class="chart-bar-label" style="color:var(--improving);font-weight:600;">Jul 5</div>
+      </div>
+    </div>
+    <div class="chart-legend">
+      <span><div class="legend-dot" style="background:var(--critical)"></div> Critical/High range</span>
+      <span><div class="legend-dot" style="background:var(--medium)"></div> Medium range</span>
+      <span><div class="legend-dot" style="background:var(--low)"></div> Low range</span>
+    </div>
+  </div>
+
+  <!-- Severity Delta -->
+  <div class="severity-delta">
+    <h3>Severity Distribution Change</h3>
+    <div class="delta-grid">
+      <div class="delta-item crit">
+        <div class="level-name">Critical</div>
+        <div class="counts">
+          <span class="prev" style="color:var(--critical)">5</span>
+          <span class="arrow">→</span>
+          <span class="curr" style="color:var(--low)">1</span>
+        </div>
+        <div class="change change-improved">-4</div>
+      </div>
+      <div class="delta-item high">
+        <div class="level-name">High</div>
+        <div class="counts">
+          <span class="prev" style="color:var(--high)">12</span>
+          <span class="arrow">→</span>
+          <span class="curr" style="color:var(--medium)">4</span>
+        </div>
+        <div class="change change-improved">-8</div>
+      </div>
+      <div class="delta-item med">
+        <div class="level-name">Medium</div>
+        <div class="counts">
+          <span class="prev" style="color:var(--medium)">18</span>
+          <span class="arrow">→</span>
+          <span class="curr" style="color:var(--low)">7</span>
+        </div>
+        <div class="change change-improved">-11</div>
+      </div>
+      <div class="delta-item low">
+        <div class="level-name">Low</div>
+        <div class="counts">
+          <span class="prev" style="color:var(--low)">7</span>
+          <span class="arrow">→</span>
+          <span class="curr" style="color:var(--low)">3</span>
+        </div>
+        <div class="change change-improved">-4</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- New/Fixed Findings -->
+  <div class="findings-delta">
+    <div class="delta-card fixed">
+      <h3>✓ 29 Findings Fixed</h3>
+      <div class="delta-item-list">
+        <div class="delta-item-entry">
+          <span>SQL Injection in users.py:47</span>
+          <span class="sev" style="background:rgba(239,68,68,0.15);color:var(--critical);">CRIT</span>
+        </div>
+        <div class="delta-item-entry">
+          <span>Command Injection in worker.py:23</span>
+          <span class="sev" style="background:rgba(239,68,68,0.15);color:var(--critical);">CRIT</span>
+        </div>
+        <div class="delta-item-entry">
+          <span>eval() in utils.js:88</span>
+          <span class="sev" style="background:rgba(239,68,68,0.15);color:var(--critical);">CRIT</span>
+        </div>
+        <div class="delta-item-entry">
+          <span>Hardcoded Stripe key in pay.js:12</span>
+          <span class="sev" style="background:rgba(239,68,68,0.15);color:var(--critical);">CRIT</span>
+        </div>
+        <div class="delta-item-entry">
+          <span>MD5 password hashing in auth.py:45</span>
+          <span class="sev" style="background:rgba(249,115,22,0.15);color:var(--high);">HIGH</span>
+        </div>
+        <div class="delta-item-entry">
+          <span>8 more findings...</span>
+          <span style="color:var(--text-dim);font-size:11px;">+21</span>
+        </div>
+      </div>
+    </div>
+    <div class="delta-card new">
+      <h3>⚠ 2 New Findings</h3>
+      <div class="delta-item-list">
+        <div class="delta-item-entry">
+          <span>SSRF via requests.get() in api.py:78</span>
+          <span class="sev" style="background:rgba(249,115,22,0.15);color:var(--high);">HIGH</span>
+        </div>
+        <div class="delta-item-entry">
+          <span>Insecure YAML load in config.py:12</span>
+          <span class="sev" style="background:rgba(234,179,8,0.15);color:var(--medium);">MED</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History Table -->
+  <div class="history-section">
+    <div class="history-header">
+      <h2>Scan History</h2>
+    </div>
+    <table class="history-table">
+      <thead>
+        <tr>
+          <th>Scan ID</th>
+          <th>Date</th>
+          <th>Risk Score</th>
+          <th>Findings</th>
+          <th>Secrets</th>
+          <th>Trend</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="scan-id">SCAN-a3f2e1b4</td>
+          <td>Jul 5, 14:23</td>
+          <td class="score-cell" style="color:var(--medium)">28</td>
+          <td>15</td>
+          <td>1</td>
+          <td><span class="trend-badge trend-improving">↓ -64%</span></td>
+        </tr>
+        <tr>
+          <td class="scan-id">SCAN-8b1d4e9f</td>
+          <td>Jun 28, 09:15</td>
+          <td class="score-cell" style="color:var(--critical)">78</td>
+          <td>42</td>
+          <td>9</td>
+          <td><span class="trend-badge trend-stable">→ 0%</span></td>
+        </tr>
+        <tr>
+          <td class="scan-id">SCAN-5c9a2d1e</td>
+          <td>Jun 22, 16:42</td>
+          <td class="score-cell" style="color:var(--critical)">78</td>
+          <td>40</td>
+          <td>9</td>
+          <td><span class="trend-badge trend-improving">↓ -8%</span></td>
+        </tr>
+        <tr>
+          <td class="scan-id">SCAN-2f8b7c3a</td>
+          <td>Jun 18, 11:30</td>
+          <td class="score-cell" style="color:var(--critical)">85</td>
+          <td>45</td>
+          <td>11</td>
+          <td><span class="trend-badge trend-improving">↓ -8%</span></td>
+        </tr>
+        <tr>
+          <td class="scan-id">SCAN-1a7e9d4b</td>
+          <td>Jun 14, 08:55</td>
+          <td class="score-cell" style="color:var(--critical)">92</td>
+          <td>51</td>
+          <td>12</td>
+          <td><span style="color:var(--text-dim);font-size:11px;">— first scan</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    <p>Hyperium Code-Audit v3.0.0 — Scan History + Trending Engine</p>
+    <p style="margin-top:4px;">Persists to .code_audit_history/scans.jsonl · Delta analysis · Severity tracking · Risk trajectory</p>
+  </div>
+</div>
+</body>
+</html>
