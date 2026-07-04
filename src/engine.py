@@ -23,6 +23,7 @@ from src.models import (
 )
 from src.config import CodeAuditConfig
 from src.pattern_scanner import PatternScanner, detect_language
+from src.custom_rules import load_custom_rules
 from src.secret_detector import SecretDetector
 from src.payment_scanner import PaymentScanner
 from src.dep_analyzer import DepAnalyzer
@@ -52,6 +53,13 @@ class CodeAuditEngine:
         self._progress_callback: Optional[Callable] = None
 
         # Initialize scanners
+        extra_rules = []
+        if self.config.scanners.custom_rules_path:
+            try:
+                extra_rules = load_custom_rules(self.config.scanners.custom_rules_path)
+            except Exception as e:
+                logger.warning(f"Could not load custom rules: {e}")
+
         self.pattern_scanner = PatternScanner(
             min_confidence=self.config.scanners.min_confidence,
             exclude_rules=self.config.scanners.exclude_rules,
