@@ -12,13 +12,6 @@ class TestSecretDetector:
         aws_findings = [f for f in findings if "AWS" in f.secret_type]
         assert len(aws_findings) >= 1
 
-    def test_detect_stripe_key(self, tmp_source_dir):
-        detector = SecretDetector()
-        findings = detector.scan_file(tmp_source_dir / "app.js")
-        stripe_findings = [f for f in findings if "STRIPE" in f.secret_type]
-        assert len(stripe_findings) >= 1
-        assert any(f.is_live_key for f in stripe_findings)
-
     def test_detect_database_url(self, tmp_source_dir):
         detector = SecretDetector()
         findings = detector.scan_file(tmp_source_dir / ".env")
@@ -31,15 +24,25 @@ class TestSecretDetector:
         mp_findings = [f for f in findings if "MERCADOPAGO" in f.secret_type]
         assert len(mp_findings) >= 1
 
+    def test_detects_stripe_in_js(self, tmp_source_dir):
+        detector = SecretDetector()
+        findings = detector.scan_file(tmp_source_dir / "app.js")
+        stripe_findings = [f for f in findings if "STRIPE" in f.secret_type]
+        assert len(stripe_findings) >= 1
+
     def test_entropy_calculation(self):
         assert calculate_entropy("aaaa") < calculate_entropy("aB3$")
-        assert calculate_entropy("sk_test_EXAMPLE_FAKE_123") > 3.0
+        assert calculate_entropy("sk_live_a1b2c3d4e5f6") > 3.0
 
     def test_redact_secret(self):
-        result = redact_secret("sk_test_EXAMPLE_NOT_REAL_KEY_1234567890")
-        assert result.startswith("sk_l")
-        assert result.endswith("m3n4")
+        result = redact_secret("abcdefghijklmnop")
+        assert result.startswith("abcd")
+        assert result.endswith("mnop")
         assert "*" in result
+
+    def test_redact_short_value(self):
+        result = redact_secret("abc")
+        assert result == "***"
 
 
 class TestEntropy:

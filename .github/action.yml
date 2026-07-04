@@ -1,0 +1,57 @@
+name: "Hyperium Code-Audit SAST Scanner"
+description: "Scan source code for OWASP Top 10 vulnerabilities, hardcoded secrets, payment exposures, and vulnerable dependencies"
+author: "Hyperium IA"
+
+branding:
+  icon: "shield"
+  color: "purple"
+
+inputs:
+  path:
+    description: "Path to scan (default: current directory)"
+    required: false
+    default: "."
+  format:
+    description: "Output format: sarif, html, json, or both"
+    required: false
+    default: "sarif"
+  min-confidence:
+    description: "Minimum confidence threshold (0.0-1.0)"
+    required: false
+    default: "0.5"
+  skip-secrets:
+    description: "Skip secret detection"
+    required: false
+    default: "false"
+  skip-deps:
+    description: "Skip dependency analysis"
+    required: false
+    default: "false"
+  skip-payment:
+    description: "Skip payment gateway scanning"
+    required: false
+    default: "false"
+  fail-on:
+    description: "Exit with error on: critical, high, medium, low, never"
+    required: false
+    default: "critical"
+
+outputs:
+  results-path:
+    description: "Path to the scan results file"
+  risk-score:
+    description: "Overall risk score (0-100)"
+  total-findings:
+    description: "Total number of findings"
+
+runs:
+  using: "docker"
+  image: "Dockerfile"
+  args:
+    - ${{ inputs.path }}
+    - ${{ inputs.format }}
+    - ${{ inputs.min-confidence }}
+    - ${{ inputs.skip-secrets }}
+    - ${{ inputs.skip-deps }}
+    - ${{ inputs.skip-payment }}
+    - ${{ inputs.fail-on }}

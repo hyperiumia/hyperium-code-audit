@@ -1,0 +1,30 @@
+# Hyperium Code-Audit — GitLab CI/CD Template
+# Include this in your .gitlab-ci.yml:
+#   include:
+#     - remote: https://raw.githubusercontent.com/hyperiumia/hyperium-code-audit/main/templates/gitlab-ci.yml
+
+code-audit-sast:
+  stage: test
+  image: python:3.12-slim
+  variables:
+    SCAN_PATH: "."
+    SCAN_FORMAT: "sarif"
+    MIN_CONFIDENCE: "0.5"
+  before_script:
+    - pip install pydantic rich click requests pyyaml jinja2
+  script:
+    - git clone --depth 1 https://github.com/hyperiumia/hyperium-code-audit.git /tmp/code-audit
+    - cd /tmp/code-audit
+    - python -m src.cli scan "$CI_PROJECT_DIR" --format "$SCAN_FORMAT" --min-confidence "$MIN_CONFIDENCE"
+    - cp -r reports/ "$CI_PROJECT_DIR/code-audit-reports/"
+  artifacts:
+    when: always
+    paths:
+      - code-audit-reports/
+    reports:
+      sast: code-audit-reports/*.sarif
+    expire_in: 30 days
+  allow_failure: true
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

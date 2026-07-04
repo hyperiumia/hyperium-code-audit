@@ -25,6 +25,7 @@ class ScannerConfig(BaseModel):
     payment_scanner: bool = True
     dep_analyzer: bool = True
     ast_engine: bool = True
+    taint_analyzer: bool = True
     min_confidence: float = Field(default=0.5, ge=0.0, le=1.0)
     exclude_rules: List[str] = Field(default=[])
     custom_rules_path: Optional[str] = None

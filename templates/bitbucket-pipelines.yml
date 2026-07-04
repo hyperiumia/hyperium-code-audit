@@ -1,0 +1,16 @@
+# Hyperium Code-Audit — Bitbucket Pipelines Template
+# Add this to your bitbucket-pipelines.yml
+
+pipelines:
+  default:
+    - step:
+        name: Security Scan
+        image: python:3.12-slim
+        script:
+          - pip install pydantic rich click requests pyyaml jinja2
+          - git clone --depth 1 https://github.com/hyperiumia/hyperium-code-audit.git /tmp/code-audit
+          - cd /tmp/code-audit
+          - python -m src.cli scan "." --format json --min-confidence 0.5
+          - cp -r reports/ $BITBUCKET_CLONE_DIR/code-audit-reports/
+        artifacts:
+          - code-audit-reports/**

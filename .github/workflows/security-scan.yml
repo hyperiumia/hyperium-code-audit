@@ -1,0 +1,49 @@
+# Hyperium Code-Audit — GitHub Actions Workflow
+# Copy this file to your project's .github/workflows/ directory
+
+name: "Security Scan"
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    - cron: "0 6 * * 1"  # Weekly Monday 6am UTC
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  code-audit:
+    name: "SAST — Hyperium Code-Audit"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Code-Audit
+        uses: hyperiumia/code-audit-action@v1
+        id: scan
+        with:
+          path: "."
+          format: "sarif"
+          min-confidence: "0.6"
+          fail-on: "critical"
+
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: reports/*.sarif
+          category: "code-audit"
+
+      - name: Upload HTML Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-report
+          path: reports/*.html
+          retention-days: 30

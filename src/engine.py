@@ -27,6 +27,7 @@ from src.secret_detector import SecretDetector
 from src.payment_scanner import PaymentScanner
 from src.dep_analyzer import DepAnalyzer
 from src.ast_engine import ASTEngine
+from src.taint_analyzer import TaintAnalyzer
 from src.triage_engine import TriageEngine
 from src.compliance_mapper import ComplianceMapper
 from src.checkpoint_manager import CheckpointManager
@@ -66,6 +67,7 @@ class CodeAuditEngine:
             timeout=self.config.scanners.dep_api_timeout,
         )
         self.ast_engine = ASTEngine()
+        self.taint_analyzer = TaintAnalyzer()
         self.triage_engine = TriageEngine(
             critical_paths=self.config.analysis.asset_criticality.get("critical_paths", []),
         )
@@ -121,6 +123,8 @@ class CodeAuditEngine:
                     result.findings.extend(self.pattern_scanner.scan_file(fp, lang))
                 if self.config.scanners.ast_engine and lang.value == "python":
                     result.findings.extend(self.ast_engine.scan_file(fp, lang))
+                if self.config.scanners.taint_analyzer and lang.value == "python":
+                    result.findings.extend(self.taint_analyzer.scan_file(fp))
                 self.checkpoint_mgr.record_progress(1)
                 if (i + 1) % 100 == 0:
                     self._report("SCAN", f"Scanned {i+1}/{len(source_files)} files", 15 + int(30 * i / max(len(source_files), 1)))

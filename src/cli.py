@@ -21,6 +21,7 @@ from rich.text import Text
 from src.config import CodeAuditConfig
 from src.engine import CodeAuditEngine
 from src.report_generator import generate_html, generate_json
+from src.sarif_exporter import generate_sarif
 
 console = Console()
 
@@ -36,7 +37,7 @@ def main():
 @click.argument("target", default=".", type=click.Path(exists=True))
 @click.option("--config", "-c", type=click.Path(), help="Config file (YAML)")
 @click.option("--output", "-o", default="./reports", help="Report output directory")
-@click.option("--format", "-f", "fmt", default="html", type=click.Choice(["html", "json", "both"]))
+@click.option("--format", "-f", "fmt", default="html", type=click.Choice(["html", "json", "sarif", "both"]))
 @click.option("--no-secrets", is_flag=True, help="Disable secret detection")
 @click.option("--no-deps", is_flag=True, help="Disable dependency analysis")
 @click.option("--no-payment", is_flag=True, help="Disable payment scanning")
@@ -157,6 +158,10 @@ def scan(target, config, output, fmt, no_secrets, no_deps, no_payment, min_confi
     if fmt in ("json", "both"):
         json_path = generate_json(result, output_dir / f"{result.scan_id}.json")
         console.print(f"  [green]✓[/green] JSON report: {json_path}")
+
+    if fmt in ("sarif", "both"):
+        sarif_path = generate_sarif(result, output_dir / f"{result.scan_id}.sarif")
+        console.print(f"  [green]✓[/green] SARIF report: {sarif_path}")
 
     console.print()
 
