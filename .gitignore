@@ -10,3 +10,8 @@ reports/
 .pytest_cache/
 .env
 .DS_Store
+.code_audit_history/
+reports/
+__pycache__/
+*.pyc
+.pytest_cache/
