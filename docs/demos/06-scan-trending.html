@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+<title>Hyperium Code-Audit — Scan Trending</title>
+
+<style>
+:root {
+    --bg: #0a0a0a; --surface: #111; --surface-alt: #161616;
+    --accent: #c8ff00; --accent-dim: #a0cc00;
+    --text: #e8e8e8; --text-muted: #6b6b6b;
+    --danger: #ff4444; --warning: #ffaa00; --success: #c8ff00;
+    --info: #4488ff; --border: #222; --critical-bg: rgba(255,68,68,0.08);
+    --high-bg: rgba(255,136,0,0.06); --medium-bg: rgba(255,170,0,0.05);
+    --low-bg: rgba(72,136,255,0.05);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Mono',monospace;background:var(--bg);color:var(--text);line-height:1.6}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:9999}
+.container{max-width:1400px;margin:0 auto;padding:0 2rem}
+h1,h2,h3{font-family:'Syne',sans-serif;letter-spacing:-0.02em}
+a{color:var(--accent);text-decoration:none}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(10,10,10,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:.8rem 0}
+.topbar .container{display:flex;justify-content:space-between;align-items:center}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:1rem;color:var(--accent)}
+.logo span{color:var(--text-muted);font-weight:400}
+.badge{display:inline-block;padding:.15rem .55rem;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;border:1px solid var(--border)}
+.badge-critical{background:rgba(255,68,68,.12);color:var(--danger);border-color:rgba(255,68,68,.3)}
+.badge-high{background:rgba(255,136,0,.1);color:var(--warning);border-color:rgba(255,136,0,.3)}
+.badge-medium{background:rgba(255,170,0,.08);color:#ddaa00;border-color:rgba(255,170,0,.2)}
+.badge-low{background:rgba(72,136,255,.08);color:var(--info);border-color:rgba(72,136,255,.2)}
+.page-header{padding:3rem 0 2rem}
+.page-header h1{font-size:2.2rem;font-weight:800;margin-bottom:.5rem}
+.page-header p{color:var(--text-muted);max-width:700px}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;margin:2rem 0}
+.stat-card{background:var(--surface);border:1px solid var(--border);padding:1.2rem;text-align:center}
+.stat-card .num{font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;line-height:1}
+.stat-card .label{color:var(--text-muted);font-size:.75rem;margin-top:.3rem}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+th,td{padding:.7rem 1rem;text-align:left;border-bottom:1px solid var(--border)}
+th{background:var(--surface-alt);font-family:'Syne',sans-serif;font-weight:600;color:var(--accent);position:sticky;top:0}
+tr:hover{background:var(--surface)}
+.panel{background:var(--surface);border:1px solid var(--border);margin:1.5rem 0}
+.panel-header{padding:1rem 1.5rem;border-bottom:1px solid var(--border);font-family:'Syne',sans-serif;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.panel-body{padding:1.5rem}
+code{background:var(--surface-alt);padding:.15rem .4rem;font-size:.8rem;color:var(--accent)}
+pre{background:var(--surface);border:1px solid var(--border);padding:1.2rem;overflow-x:auto;font-size:.78rem;line-height:1.7}
+.source-line{display:flex;gap:1rem}
+.source-line .ln{color:var(--text-muted);user-select:none;min-width:3rem;text-align:right}
+.source-line .hl{background:rgba(255,68,68,.08);display:block;padding:0 1rem;margin:0 -1rem}
+.footer{padding:3rem 0;border-top:1px solid var(--border);margin-top:4rem;text-align:center;color:var(--text-muted);font-size:.75rem}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.fade{animation:fadeUp .5s ease forwards;opacity:0}
+.d1{animation-delay:.1s}.d2{animation-delay:.2s}.d3{animation-delay:.3s}.d4{animation-delay:.4s}
+canvas{display:block;margin:1rem auto}
+.filter-bar{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.5rem}
+.filter-btn{background:var(--surface);border:1px solid var(--border);color:var(--text-muted);padding:.4rem .8rem;font-family:'DM Mono',monospace;font-size:.75rem;cursor:pointer;transition:all .2s}
+.filter-btn:hover,.filter-btn.active{border-color:var(--accent);color:var(--accent)}
+.flow-step{display:flex;align-items:flex-start;gap:1rem;padding:1rem 0;border-left:2px solid var(--border);margin-left:.8rem;padding-left:1.5rem;position:relative}
+.flow-step::before{content:'';position:absolute;left:-.45rem;top:1.2rem;width:.7rem;height:.7rem;background:var(--accent);border-radius:50%}
+.flow-step.danger::before{background:var(--danger)}
+.flow-step.warning::before{background:var(--warning)}
+.flow-step.safe::before{background:var(--success)}
+.flow-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted)}
+.flow-code{background:var(--surface);border:1px solid var(--border);padding:.6rem 1rem;margin-top:.3rem;font-size:.8rem;color:var(--text)}
+</style>
+
+</head>
+<body>
+<div class="topbar"><div class="container">
+    <div class="logo">HYPERIUM <span>code-audit</span></div>
+    <span style="color:var(--text-muted);font-size:.8rem">Security Trend Analysis</span>
+</div></div>
+
+<div class="container">
+<div class="page-header fade">
+    <h1>Security Trend</h1>
+    <p>Risk score trajectory and finding deltas over the last 10 scans. Track your security posture over time.</p>
+</div>
+
+<div class="stats-row fade d1">
+    <div class="stat-card"><div class="num" style="color:var(--success)">-24%</div><div class="label">Risk Score Delta</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--success)">-12</div><div class="label">Findings Fixed</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--danger)">+3</div><div class="label">New Findings</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--text)">72.4</div><div class="label">Current Score</div></div>
+    <div class="stat-card"><div class="num" style="color:var(--success)">Improving</div><div class="label">Trend</div></div>
+</div>
+
+<div class="panel fade d2">
+<div class="panel-header"><span>Risk Score Over Time</span></div>
+<div class="panel-body">
+<canvas id="chart" width="900" height="300"></canvas>
+</div>
+</div>
+
+<div class="panel fade d3">
+<div class="panel-header"><span>Scan History</span></div>
+<div class="panel-body" style="padding:0;overflow-x:auto">
+<table>
+<thead><tr><th>Date</th><th>Scan ID</th><th>Files</th><th>Findings</th><th>Critical</th><th>High</th><th>Risk Score</th><th>Delta</th></tr></thead>
+<tbody>
+<tr><td>Jul 5, 14:32</td><td><code>SCAN-a9bc5b</code></td><td>847</td><td>46</td><td>7</td><td>12</td><td>72.4</td><td style="color:var(--danger)">+2.1</td></tr>
+<tr><td>Jul 4, 22:15</td><td><code>SCAN-f3e1c9</code></td><td>845</td><td>55</td><td>9</td><td>14</td><td>70.3</td><td style="color:var(--success)">-5.8</td></tr>
+<tr><td>Jul 4, 10:00</td><td><code>SCAN-8d2a41</code></td><td>844</td><td>58</td><td>10</td><td>15</td><td>76.1</td><td style="color:var(--success)">-3.2</td></tr>
+<tr><td>Jul 3, 16:40</td><td><code>SCAN-b7c9e2</code></td><td>840</td><td>61</td><td>11</td><td>16</td><td>79.3</td><td style="color:var(--success)">-8.5</td></tr>
+<tr><td>Jul 2, 20:00</td><td><code>SCAN-4f8d3a</code></td><td>838</td><td>68</td><td>13</td><td>18</td><td>87.8</td><td style="color:var(--danger)">+4.2</td></tr>
+<tr><td>Jul 2, 09:30</td><td><code>SCAN-e1b7f6</code></td><td>835</td><td>64</td><td>11</td><td>17</td><td>83.6</td><td style="color:var(--success)">-6.0</td></tr>
+<tr><td>Jul 1, 15:20</td><td><code>SCAN-2c5e8d</code></td><td>834</td><td>70</td><td>14</td><td>19</td><td>89.6</td><td style="color:var(--success)">-4.1</td></tr>
+<tr><td>Jun 30, 22:00</td><td><code>SCAN-9a3c1f</code></td><td>830</td><td>74</td><td>15</td><td>20</td><td>93.7</td><td style="color:var(--danger)">+7.3</td></tr>
+<tr><td>Jun 30, 11:10</td><td><code>SCAN-6e4b2a</code></td><td>828</td><td>62</td><td>10</td><td>15</td><td>86.4</td><td style="color:var(--success)">-12.8</td></tr>
+<tr><td>Jun 29, 18:45</td><td><code>SCAN-1d7f9e</code></td><td>825</td><td>78</td><td>16</td><td>22</td><td>99.2</td><td style="color:var(--text-muted)">baseline</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<div class="panel fade d4">
+<div class="panel-header"><span>Latest Delta Analysis (SCAN-a9bc5b vs SCAN-f3e1c9)</span></div>
+<div class="panel-body">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem">
+<div>
+    <h3 style="font-size:1rem;color:var(--danger);margin-bottom:1rem">New Findings (+3)</h3>
+    <div style="font-size:.85rem;color:var(--text-muted);line-height:2">
+        <span class="badge badge-critical">CRIT</span> S3 bucket public_read_access = true<br>
+        <span class="badge badge-high">HIGH</span> Docker ENV contains API_KEY<br>
+        <span class="badge badge-medium">MED</span> K8s missing resource limits
+    </div>
+</div>
+<div>
+    <h3 style="font-size:1rem;color:var(--success);margin-bottom:1rem">Fixed Findings (-12)</h3>
+    <div style="font-size:.85rem;color:var(--text-muted);line-height:2">
+        <span class="badge" style="background:rgba(200,255,0,.1);color:var(--success);border-color:rgba(200,255,0,.3)">FIXED</span> SQL injection in orders.py<br>
+        <span class="badge" style="background:rgba(200,255,0,.1);color:var(--success);border-color:rgba(200,255,0,.3)">FIXED</span> Hardcoded GitHub token<br>
+        <span class="badge" style="background:rgba(200,255,0,.1);color:var(--success);border-color:rgba(200,255,0,.3)">FIXED</span> CORS wildcard in api.py<br>
+        <span class="badge" style="background:rgba(200,255,0,.1);color:var(--success);border-color:rgba(200,255,0,.3)">FIXED</span> +8 more...
+    </div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="footer"><p>Hyperium Code-Audit v4.0.0 — Scan Trending Engine — 10 scans tracked</p></div>
+</div>
+
+<script>
+const canvas = document.getElementById('chart');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const data = [99.2, 86.4, 93.7, 89.6, 83.6, 87.8, 79.3, 76.1, 70.3, 72.4];
+const labels = ['Jun 29', 'Jun 30', 'Jun 30', 'Jul 1', 'Jul 2', 'Jul 2', 'Jul 3', 'Jul 4', 'Jul 4', 'Jul 5'];
+const pad = {t:30,r:30,b:50,l:50};
+const cw = W-pad.l-pad.r, ch = H-pad.t-pad.b;
+
+ctx.fillStyle = '#0a0a0a';
+ctx.fillRect(0,0,W,H);
+
+// Grid
+ctx.strokeStyle = '#1a1a1a';
+ctx.lineWidth = 1;
+for(let i=0;i<=5;i++){
+    const y = pad.t + (ch/5)*i;
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke();
+    ctx.fillStyle = '#6b6b6b';
+    ctx.font = '11px DM Mono';
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.round(100-(20*i)), pad.l-8, y+4);
+}
+
+// Points
+const pts = data.map((v,i) => ({
+    x: pad.l + (cw/(data.length-1))*i,
+    y: pad.t + ch - (v/100)*ch
+}));
+
+// Area
+ctx.beginPath();
+ctx.moveTo(pts[0].x, pad.t+ch);
+pts.forEach(p => ctx.lineTo(p.x, p.y));
+ctx.lineTo(pts[pts.length-1].x, pad.t+ch);
+ctx.closePath();
+const grad = ctx.createLinearGradient(0,pad.t,0,pad.t+ch);
+grad.addColorStop(0,'rgba(200,255,0,0.15)');
+grad.addColorStop(1,'rgba(200,255,0,0.01)');
+ctx.fillStyle = grad;
+ctx.fill();
+
+// Line
+ctx.beginPath();
+pts.forEach((p,i) => i===0 ? ctx.moveTo(p.x,p.y) : ctx.lineTo(p.x,p.y));
+ctx.strokeStyle = '#c8ff00';
+ctx.lineWidth = 2.5;
+ctx.stroke();
+
+// Points + labels
+pts.forEach((p,i) => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 4, 0, Math.PI*2);
+    ctx.fillStyle = i === pts.length-1 ? '#c8ff00' : '#161616';
+    ctx.fill();
+    ctx.strokeStyle = '#c8ff00';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = '#6b6b6b';
+    ctx.font = '10px DM Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText(labels[i], p.x, H-pad.b+20);
+    if(i === pts.length-1 || i === 0 || i === 4){
+        ctx.fillStyle = '#e8e8e8';
+        ctx.fillText(data[i], p.x, p.y-12);
+    }
+});
+</script>
+</body></html>
