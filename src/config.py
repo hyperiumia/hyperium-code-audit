@@ -26,6 +26,9 @@ class ScannerConfig(BaseModel):
     dep_analyzer: bool = True
     ast_engine: bool = True
     taint_analyzer: bool = True
+    iac_scanner: bool = True
+    api_security: bool = True
+    incremental_since: str = ""
     js_ast_engine: bool = True
     payment_logic: bool = True
     verify_secrets: bool = False

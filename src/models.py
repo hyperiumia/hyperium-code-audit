@@ -56,6 +56,11 @@ class Language(str, Enum):
     RUBY = "ruby"
     HTML = "html"
     UNKNOWN = "unknown"
+    DOCKERFILE = "dockerfile"
+    TERRAFORM = "terraform"
+    KUBERNETES = "kubernetes"
+    YAML = "yaml"
+    SHELL = "shell"
 
 
 class ComplianceFramework(str, Enum):

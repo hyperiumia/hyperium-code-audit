@@ -30,6 +30,9 @@ from src.dep_analyzer import DepAnalyzer
 from src.ast_engine import ASTEngine
 from src.taint_analyzer import TaintAnalyzer
 from src.js_ast_engine import JSASTEngine
+from src.iac_scanner import IaCScanner
+from src.api_security import APISecurityScanner
+from src.incremental import get_changed_files, is_git_repo
 from src.payment_logic import PaymentLogicAnalyzer
 from src.secret_verifier import verify_secret_format
 from src.scan_history import ScanHistory
@@ -81,6 +84,8 @@ class CodeAuditEngine:
         self.ast_engine = ASTEngine()
         self.taint_analyzer = TaintAnalyzer()
         self.js_ast_engine = JSASTEngine()
+        self.iac_scanner = IaCScanner()
+        self.api_scanner = APISecurityScanner()
         self.payment_logic = PaymentLogicAnalyzer()
         self.scan_history = ScanHistory()
         self.triage_engine = TriageEngine(
@@ -171,6 +176,18 @@ class CodeAuditEngine:
                     if fp.suffix in ('.py', '.js', '.ts'):
                         result.findings.extend(self.payment_logic.scan_file(fp))
             self.checkpoint_mgr.complete_phase("payment_scan")
+
+            # Phase 4.5: IaC + API Security
+            iac_files = [f for f in source_files if f.name.lower() in ("dockerfile",) or f.name.endswith((".tf", ".dockerfile"))]
+            if self.config.scanners.iac_scanner and iac_files:
+                result.findings.extend(self.iac_scanner.scan_files(iac_files))
+
+            api_files = [f for f in source_files if f.suffix in (".py", ".js", ".ts")]
+            if self.config.scanners.api_security:
+                for af in api_files:
+                    lang = detect_language(af)
+                    if lang:
+                        result.findings.extend(self.api_scanner.scan_file(af, lang))
 
             # Phase 5: Dependency analysis
             self._report("DEPS", "Analyzing dependencies...", 70)

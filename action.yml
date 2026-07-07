@@ -1,0 +1,103 @@
+name: "Hyperium Code-Audit"
+description: "Production-grade SAST scanner for OWASP Top 10, secrets, payment gateways, dependencies, and IaC misconfigurations"
+author: "Hyperium IA"
+
+branding:
+  icon: "shield"
+  color: "green"
+
+inputs:
+  path:
+    description: "Path to scan"
+    required: false
+    default: "."
+  format:
+    description: "Output format: html, json, sarif, pdf, all"
+    required: false
+    default: "sarif"
+  fail-on:
+    description: "Exit non-zero if findings at this severity or higher: critical, high, medium, low, never"
+    required: false
+    default: "high"
+  verify-secrets:
+    description: "Enable secret format verification and entropy scoring"
+    required: false
+    default: "false"
+  since:
+    description: "Git ref for incremental scan (e.g. HEAD~1, main)"
+    required: false
+    default: ""
+  custom-rules:
+    description: "Path to custom YAML rules file"
+    required: false
+    default: ""
+
+outputs:
+  findings-count:
+    description: "Total number of findings"
+    value: ${{ steps.scan.outputs.findings }}
+  exit-code:
+    description: "Exit code from the scan"
+    value: ${{ steps.scan.outputs.exit-code }}
+  report-path:
+    description: "Path to generated report"
+    value: ${{ steps.scan.outputs.report }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install Code-Audit
+      shell: bash
+      run: pip install hyperium-code-audit
+
+    - name: Run Security Scan
+      id: scan
+      shell: bash
+      run: |
+        ARGS="--format ${{ inputs.format }} --fail-on ${{ inputs.fail-on }}"
+
+        if [ -n "${{ inputs.since }}" ]; then
+          ARGS="$ARGS --since ${{ inputs.since }}"
+        fi
+
+        if [ "${{ inputs.verify-secrets }}" = "true" ]; then
+          ARGS="$ARGS --verify-secrets"
+        fi
+
+        if [ -n "${{ inputs.custom-rules }}" ]; then
+          ARGS="$ARGS --custom-rules ${{ inputs.custom-rules }}"
+        fi
+
+        code-audit scan ${{ inputs.path }} $ARGS || EXIT_CODE=$?
+
+        echo "exit-code=${EXIT_CODE:-0}" >> $GITHUB_OUTPUT
+
+        # Count findings from JSON if available
+        JSON_FILE=$(find reports/ -name "*.json" -type f 2>/dev/null | head -1)
+        if [ -n "$JSON_FILE" ]; then
+          COUNT=$(python3 -c "import json; d=json.load(open('$JSON_FILE')); print(d.get('summary',{}).get('total',0))")
+          echo "findings=$COUNT" >> $GITHUB_OUTPUT
+          echo "report=$JSON_FILE" >> $GITHUB_OUTPUT
+        else
+          echo "findings=0" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Upload SARIF
+      uses: github/codeql-action/upload-sarif@v3
+      if: inputs.format == 'sarif' || inputs.format == 'all'
+      continue-on-error: true
+      with:
+        sarif_file: reports/
+
+    - name: Upload Report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: code-audit-report
+        path: reports/
+        retention-days: 30

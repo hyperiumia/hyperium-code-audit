@@ -1,231 +1,225 @@
 # Hyperium Code-Audit
 
-### Production-Grade Source Code Security Scanner (SAST)
+### Production-Grade SAST Scanner — v4.0
 
-**Scan your source code for OWASP Top 10 vulnerabilities, hardcoded secrets, payment gateway exposures, and vulnerable dependencies — in seconds.**
+![Python](https://img.shields.io/badge/python-3.10%2B-blue?logo=python&logoColor=white)
+![Tests](https://img.shields.io/badge/tests-120%20passing-brightgreen)
+![Version](https://img.shields.io/badge/version-4.0.0-purple)
+![License](https://img.shields.io/badge/license-MIT-green)
+![OWASP](https://img.shields.io/badge/OWASP-Top%2010-orange)
 
-[Getting Started](#getting-started) · [Features](#features) · [Architecture](#architecture) · [CLI Usage](#cli-usage)
+**Scan your source code for OWASP Top 10 vulnerabilities, hardcoded secrets, payment gateway exposures, vulnerable dependencies, and infrastructure misconfigurations — in seconds.**
 
----
-
-## Why Code-Audit?
-
-| Feature | Code-Audit | Semgrep | Bandit | Snyk Code |
-|---------|:---:|:---:|:---:|:---:|
-| OWASP Top 10 patterns | ✅ 22 rules | ✅ | Partial | ✅ |
-| AST analysis (Python) | ✅ | ✅ | ✅ | ✅ |
-| AST analysis (JS/TS) | ✅ tree-sitter | ✅ | ❌ | ✅ |
-| Taint analysis (Python) | ✅ | ✅ | ❌ | Partial |
-| Secret detection | ✅ 20 patterns | ❌ | ❌ | ✅ |
-| Secret verification | ✅ format+entropy | ❌ | ❌ | ❌ |
-| Payment gateway scan | ✅ 7 gateways | ❌ | ❌ | ❌ |
-| Payment logic analysis | ✅ | ❌ | ❌ | ❌ |
-| Dependency CVE check | ✅ | ❌ | ❌ | ✅ |
-| Compliance mapping | ✅ OWASP | ❌ | ❌ | Partial |
-| Custom rules (YAML) | ✅ | ✅ | ❌ | ❌ |
-| SARIF export | ✅ | ✅ | ❌ | ✅ |
-| PDF reports | ✅ | ❌ | ❌ | ❌ |
-| Scan trending | ✅ | ❌ | ❌ | ❌ |
-| CI exit codes | ✅ granular | ✅ | ✅ | ✅ |
-| GitHub Action | ✅ | ✅ | ❌ | ✅ |
-| Self-contained HTML report | ✅ | ❌ | ❌ | ❌ |
-| Offline operation | ✅ | ✅ | ✅ | ❌ |
-| LATAM payment gateways | ✅ | ❌ | ❌ | ❌ |
+[Quick Start](#quick-start) · [Features](#features) · [Comparison](#comparison) · [CLI](#cli-usage) · [CI/CD](#cicd-integration) · [Architecture](#architecture)
 
 ---
 
-## Features
+## Quick Start
 
-### 🔍 Pattern Scanner — 22 OWASP Rules
+```bash
+# Install
+pip install hyperium-code-audit
 
-| Category | OWASP | Examples |
-|----------|-------|----------|
-| SQL Injection | A03 | String concat in queries, unsafe formatting |
-| Command Injection | A03 | os.system, child_process.exec with user input |
-| XSS | A03 | innerHTML, document.write, template injection |
-| SSRF | A10 | requests.get with user-controlled URLs |
-| Path Traversal | A01 | File operations with user-controlled paths |
-| Insecure Deserialization | A08 | pickle.loads, ObjectInputStream |
-| Crypto Failures | A02 | MD5/SHA1 passwords, verify=False |
-| Broken Auth | A07 | Plaintext passwords, default credentials |
-| Debug Mode | A05 | DEBUG=True in production |
+# Scan your project
+code-audit scan ./my-project
 
-**Languages:** Python, JavaScript, TypeScript, PHP, Java, Go, C#, Ruby
+# Scan with SARIF output for GitHub Security tab
+code-audit scan ./my-project --format sarif --fail-on critical
+What It Scans
 
-### 🧠 Taint Analysis (Python)
+Category	What It Finds
+OWASP Top 10	SQL injection, XSS, SSRF, command injection, path traversal, insecure deserialization
+Hardcoded Secrets	AWS keys, Stripe, GitHub tokens, JWT, database URLs, private keys — 20+ patterns
+Payment Gateways	Stripe, MercadoPago, PayPal, Conekta, Culqi, Wompi, Square + payment logic
+Dependencies	65 real CVEs across 30 popular Python and JavaScript packages
+Infrastructure	Dockerfile, Terraform, Kubernetes misconfigurations
+API Security	Missing auth, CORS wildcards, debug mode, error detail leaks
+Taint Analysis	Data-flow tracking from user input to dangerous sinks (Python)
+
+
+Features
+
+Pattern Scanner — 22 OWASP Rules
+
+Category	OWASP	Examples
+SQL Injection	A03	String concat in queries, unsafe formatting
+Command Injection	A03	os.system, child_process.exec with user input
+XSS	A03	innerHTML, document.write, template injection
+SSRF	A10	requests.get with user-controlled URLs
+Path Traversal	A01	File operations with user-controlled paths
+Insecure Deserialization	A08	pickle.loads, ObjectInputStream
+Crypto Failures	A02	MD5/SHA1 passwords, verify=False
+Broken Auth	A07	Plaintext passwords, default credentials
+Debug Mode	A05	DEBUG=True in production
+
+Languages: Python, JavaScript, TypeScript, PHP, Java, Go, C#, Ruby
+
+
+Taint Analysis (Python)
 
 Data-flow tracking from user input to dangerous sinks:
 
-Source (request.args.get("id"))
-→ sanitize check (int(), escape(), parameterized)
-→ Sink (cursor.execute())
 
 text
+Source (request.args.get("id"))
+  → sanitize check (int(), escape(), parameterized)
+  → Sink (cursor.execute())
+Source (request.args.get("id"))
+  → sanitize check (int(), escape(), parameterized)
+  → Sink (cursor.execute())
 
-- **Sources:** Flask, Django, FastAPI request data
-- **Sinks:** SQL, cmd, eval, file, SSRF, deserialization
-- **Sanitizers:** int(), escape(), parameterized queries, allowlists
+Sources: Flask, Django, FastAPI request data
+Sinks: SQL, cmd, eval, file, SSRF, deserialization
+Sanitizers: int(), escape(), parameterized queries, allowlists
 
-### 🌲 AST Engine — Python + JS/TS
+AST Engine — Python + JS/TS
 
-- **Python:** Abstract Syntax Tree analysis for high-confidence findings beyond regex
-- **JavaScript/TypeScript:** Tree-sitter based analysis detecting eval(), XSS (innerHTML), command injection, SQL in template literals
+Python: Abstract Syntax Tree analysis for high-confidence findings beyond regex
+JavaScript/TypeScript: Tree-sitter based analysis detecting eval(), XSS (innerHTML), command injection, SQL in template literals
 
-### 🔑 Secret Detector — 20 Patterns + Verification
-
-AWS · Stripe · MercadoPago · GitHub · JWT · Database URLs · Private Keys · Google · Slack · Twilio · SendGrid · Conekta · Culqi · OpenAI · Generic high-entropy secrets
-
-**Verification** (opt-in `--verify-secrets`):
-- Format validation against known key patterns
-- Shannon entropy scoring (high entropy = likely real)
-- Confidence boost/penalty based on verification result
-
-### 💳 Payment Scanner — 7 Gateways + Logic Analysis
-
-| Gateway | Key Types | PCI Flag |
-|---------|-----------|----------|
-| Stripe | Live/Test/Restricted/Webhook | ✅ |
-| MercadoPago | Live/Test/Public | ✅ |
-| PayPal | Client Secret/Webhook | ✅ |
-| Conekta | Live/Test | ✅ |
-| Culqi | Live/Test | ✅ |
-| Wompi | Private/Public/Integrity | ✅ |
-| Square | Live Secret | ✅ |
-
-**Payment Logic Analysis** checks for:
-- Missing webhook signature verification
-- Missing idempotency keys on charge operations
-- Client-trusted payment amounts (no server validation)
-- Sensitive data in payment error responses
-
-### 📦 Dependency Analyzer
-
-Checks `requirements.txt` and `package.json` against offline CVE database.
-
-### 📊 Risk Scoring
-
-Weighted model: `Score = Σ(severity × confidence × path_criticality × exploit_multiplier)`
-
-### 🏛️ Compliance Mapping
-
-Maps every finding to OWASP Top 10 2021 with gap scoring.
-
-### 📝 Custom Rules Engine
-
-Define your own vulnerability rules in YAML — no Python needed:
-
-```yaml
-rules:
-  - id: CUSTOM-001
-    title: "API endpoint without rate limiting"
-    severity: medium
-    category: security_misconfig
-    languages: [python]
-    pattern: '@app\.route$$[^)]+$$\ndef (?!.*limiter)'
-    remediation: "Add rate limiting decorator"
-
-- **Sources:** Flask, Django, FastAPI request data
-- **Sinks:** SQL, cmd, eval, file, SSRF, deserialization
-- **Sanitizers:** int(), escape(), parameterized queries, allowlists
-
-### 🌲 AST Engine — Python + JS/TS
-
-- **Python:** Abstract Syntax Tree analysis for high-confidence findings beyond regex
-- **JavaScript/TypeScript:** Tree-sitter based analysis detecting eval(), XSS (innerHTML), command injection, SQL in template literals
-
-### 🔑 Secret Detector — 20 Patterns + Verification
+Secret Detector — 20 Patterns + Verification
 
 AWS · Stripe · MercadoPago · GitHub · JWT · Database URLs · Private Keys · Google · Slack · Twilio · SendGrid · Conekta · Culqi · OpenAI · Generic high-entropy secrets
 
-**Verification** (opt-in `--verify-secrets`):
-- Format validation against known key patterns
-- Shannon entropy scoring (high entropy = likely real)
-- Confidence boost/penalty based on verification result
 
-### 💳 Payment Scanner — 7 Gateways + Logic Analysis
+Verification (opt-in --verify-secrets):
 
-| Gateway | Key Types | PCI Flag |
-|---------|-----------|----------|
-| Stripe | Live/Test/Restricted/Webhook | ✅ |
-| MercadoPago | Live/Test/Public | ✅ |
-| PayPal | Client Secret/Webhook | ✅ |
-| Conekta | Live/Test | ✅ |
-| Culqi | Live/Test | ✅ |
-| Wompi | Private/Public/Integrity | ✅ |
-| Square | Live Secret | ✅ |
+Format validation against known key patterns
+Shannon entropy scoring (high entropy = likely real)
+Confidence boost/penalty based on verification result
 
-**Payment Logic Analysis** checks for:
-- Missing webhook signature verification
-- Missing idempotency keys on charge operations
-- Client-trusted payment amounts (no server validation)
-- Sensitive data in payment error responses
+Payment Scanner — 7 Gateways + Logic Analysis
 
-### 📦 Dependency Analyzer
+Gateway	Key Types	PCI Flag
+Stripe	Live/Test/Restricted/Webhook	Yes
+MercadoPago	Live/Test/Public	Yes
+PayPal	Client Secret/Webhook	Yes
+Conekta	Live/Test	Yes
+Culqi	Live/Test	Yes
+Wompi	Private/Public/Integrity	Yes
+Square	Live Secret	Yes
 
-Checks `requirements.txt` and `package.json` against offline CVE database.
+Payment Logic Analysis checks for:
 
-### 📊 Risk Scoring
+Missing webhook signature verification
+Missing idempotency keys on charge operations
+Client-trusted payment amounts (no server validation)
+Sensitive data in payment error responses
 
-Weighted model: `Score = Σ(severity × confidence × path_criticality × exploit_multiplier)`
+Dependency Analyzer
 
-### 🏛️ Compliance Mapping
+Checks requirements.txt and package.json against an offline CVE database containing 65 real CVEs across 30 packages — no network required.
 
-Maps every finding to OWASP Top 10 2021 with gap scoring.
 
-### 📝 Custom Rules Engine
+Packages tracked include: Django, Flask, Requests, PyYAML, Jinja2, Pillow, cryptography, urllib3, Werkzeug, aiohttp, lodash, express, axios, jsonwebtoken, node-fetch, and 15 more.
 
-Define your own vulnerability rules in YAML — no Python needed:
 
-```yaml
-rules:
-  - id: CUSTOM-001
-    title: "API endpoint without rate limiting"
-    severity: medium
-    category: security_misconfig
-    languages: [python]
-    pattern: '@app\.route$$[^)]+$$\ndef (?!.*limiter)'
-    remediation: "Add rate limiting decorator"
+Infrastructure as Code (v4.0)
+
+Scans IaC files for security misconfigurations:
+
+
+Dockerfile:
+
+Running as root, secrets in ENV, :latest tags, ADD vs COPY, curl piped to shell, insecure port exposure
+
+Terraform:
+
+Public S3 buckets, exposed RDS instances, 0.0.0.0/0 security groups, unencrypted storage, hardcoded passwords, disabled logging
+
+Kubernetes:
+
+Privileged containers, hostNetwork, hostPID, allowPrivilegeEscalation, missing resource limits, secrets in manifests
+
+API Security (v4.0)
+
+Detects common API security issues across Python and JavaScript:
+
+
+CORS wildcard (*) origins
+Debug mode enabled in production
+Endpoints without authentication decorators
+Error detail / stack trace leaks in responses
+API endpoints using HTTP instead of HTTPS
+
+Incremental Scanning (v4.0)
+
+Scan only files changed since a git reference — ideal for PR/push workflows:
+
 
 bash
-code-audit rules                     # Generate example rules file
+code-audit scan . --since HEAD~1    # Files changed in last commit
+code-audit scan . --since main      # Files changed since main branch
+code-audit scan . --since v3.0.0    # Files changed since tag
+code-audit scan . --since HEAD~1    # Files changed in last commit
+code-audit scan . --since main      # Files changed since main branch
+code-audit scan . --since v3.0.0    # Files changed since tag
+
+Risk Scoring
+
+Weighted model: Score = (severity x confidence x path_criticality x exploit_multiplier)
+
+
+Compliance Mapping
+
+Maps every finding to OWASP Top 10 2021 with gap scoring per category.
+
+
+Custom Rules Engine
+
+Define your own vulnerability rules in YAML — no Python needed:
+
+
+yaml
+rules:
+  - id: CUSTOM-001
+    title: "API endpoint without rate limiting"
+    severity: medium
+    category: security_misconfig
+    cwe_id: CWE-770
+    languages: [python]
+    pattern: '@app\.route\([^)]+\)\ndef (?!.*limiter)'
+    remediation: "Add rate limiting decorator"
+    confidence: 0.6
+rules:
+  - id: CUSTOM-001
+    title: "API endpoint without rate limiting"
+    severity: medium
+    category: security_misconfig
+    cwe_id: CWE-770
+    languages: [python]
+    pattern: '@app\.route\([^)]+\)\ndef (?!.*limiter)'
+    remediation: "Add rate limiting decorator"
+    confidence: 0.6
+
+bash
+code-audit rules                             # Generate example rules file
 code-audit scan . --custom-rules my-rules.yaml
-code-audit rules                     # Generate example rules file
+code-audit rules                             # Generate example rules file
 code-audit scan . --custom-rules my-rules.yaml
 
-📤 Export Formats
+Export Formats
 
-HTML — Self-contained single-file report with dashboard
+HTML — Self-contained single-file report with interactive dashboard
 JSON — Machine-readable for CI integration
 SARIF v2.1.0 — GitHub/GitLab/Azure Security tab integration
 PDF — Executive report (requires reportlab)
 
-📈 Scan Trending
+Scan Trending
 
 Track your security posture over time:
 
 
 bash
-code-audit scan .                    # Auto-saves to history
-code-audit trend                     # View trend: improving/degrading/stable
-code-audit scan .                    # Auto-saves to history
-code-audit trend                     # View trend: improving/degrading/stable
+code-audit scan .        # Auto-saves to history
+code-audit trend         # View trend: improving / degrading / stable
+code-audit scan .        # Auto-saves to history
+code-audit trend         # View trend: improving / degrading / stable
 
 Shows delta between scans: new findings, fixed findings, severity changes, risk score trajectory.
 
 
-🚦 CI/CD Exit Codes
-
-bash
-code-audit scan . --fail-on critical   # Exit 1 if any critical findings
-code-audit scan . --fail-on high       # Exit 1 if high or critical
-code-audit scan . --fail-on medium     # Exit 1 if medium or above
-code-audit scan . --fail-on never      # Always exit 0, just report
-code-audit scan . --fail-on critical   # Exit 1 if any critical findings
-code-audit scan . --fail-on high       # Exit 1 if high or critical
-code-audit scan . --fail-on medium     # Exit 1 if medium or above
-code-audit scan . --fail-on never      # Always exit 0, just report
-
-🔇 Suppression Comments
+Suppression Comments
 
 Suppress specific findings inline:
 
@@ -235,88 +229,234 @@ cursor.execute(query)  # code-audit: ignore[PY-SEC-001] -- parameterized above
 cursor.execute(query)  # code-audit: ignore[PY-SEC-001] -- parameterized above
 
 
-Getting Started
+Comparison
 
-bash
-git clone https://github.com/hyperiumia/hyperium-code-audit.git
-cd hyperium-code-audit
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-python -m src.cli scan /path/to/your/project
-git clone https://github.com/hyperiumia/hyperium-code-audit.git
-cd hyperium-code-audit
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-python -m src.cli scan /path/to/your/project
+Feature	Code-Audit	Semgrep	Bandit	Snyk Code
+OWASP Top 10 patterns (22 rules)	Yes	Yes	Partial	Yes
+Python AST analysis	Yes	Yes	Yes	Yes
+JS/TS AST (tree-sitter)	Yes	Yes	No	Yes
+Taint analysis (Python)	Yes	Yes	No	Partial
+Secret detection (20 patterns)	Yes	No	No	Yes
+Secret verification (entropy)	Yes	No	No	No
+Payment gateway scan (7)	Yes	No	No	No
+Payment logic analysis	Yes	No	No	No
+Dependency CVE check (65 CVEs)	Yes	No	No	Yes
+IaC scanning (Dockerfile/Terraform/K8s)	Yes	Partial	No	Yes
+API security rules	Yes	No	No	No
+Incremental scan (git diff)	Yes	No	No	No
+Custom rules (YAML)	Yes	Yes	No	No
+SARIF export	Yes	Yes	No	Yes
+PDF reports	Yes	No	No	No
+Scan trending	Yes	No	No	No
+Granular CI exit codes	Yes	Yes	Yes	Yes
+Offline operation	Yes	Yes	Yes	No
+
 
 CLI Usage
 
 bash
-code-audit scan ./my-project                     # Basic scan (HTML)
-code-audit scan ./my-project --format json       # JSON output
-code-audit scan ./my-project --format sarif      # SARIF for GitHub Security tab
-code-audit scan ./my-project --format all        # HTML + JSON + SARIF + PDF
-code-audit scan ./my-project --no-deps           # Skip dependency analysis
-code-audit scan ./my-project --no-secrets        # Skip secret detection
-code-audit scan ./my-project --no-taint          # Skip taint analysis
-code-audit scan ./my-project --verify-secrets    # Verify secret format + entropy
-code-audit scan ./my-project --min-confidence 0.8
-code-audit scan ./my-project --fail-on high      # CI: exit 1 on high+ findings
-code-audit scan ./my-project --custom-rules rules.yaml
-code-audit scan ./my-project --config audit.yaml
-code-audit rules                                 # Generate example custom rules
-code-audit trend                                 # View scan trend
-code-audit scan ./my-project                     # Basic scan (HTML)
-code-audit scan ./my-project --format json       # JSON output
-code-audit scan ./my-project --format sarif      # SARIF for GitHub Security tab
-code-audit scan ./my-project --format all        # HTML + JSON + SARIF + PDF
-code-audit scan ./my-project --no-deps           # Skip dependency analysis
-code-audit scan ./my-project --no-secrets        # Skip secret detection
-code-audit scan ./my-project --no-taint          # Skip taint analysis
-code-audit scan ./my-project --verify-secrets    # Verify secret format + entropy
-code-audit scan ./my-project --min-confidence 0.8
-code-audit scan ./my-project --fail-on high      # CI: exit 1 on high+ findings
-code-audit scan ./my-project --custom-rules rules.yaml
-code-audit scan ./my-project --config audit.yaml
-code-audit rules                                 # Generate example custom rules
-code-audit trend                                 # View scan trend
+# Basic scan — generates HTML report
+code-audit scan ./my-project
+
+# JSON output for CI integration
+code-audit scan ./my-project --format json
+
+# SARIF for GitHub Security tab
+code-audit scan ./my-project --format sarif
+
+# All formats (HTML + JSON + SARIF + PDF)
+code-audit scan ./my-project --format all
+
+# Incremental scan — only changed files
+code-audit scan . --since HEAD~1
+code-audit scan . --since main
+
+# CI mode: exit 1 if critical findings exist
+code-audit scan . --fail-on critical
+
+# Verify secret format + entropy scoring
+code-audit scan . --verify-secrets
+
+# Use custom rules
+code-audit scan . --custom-rules my-rules.yaml
+
+# Skip specific scanners
+code-audit scan . --no-deps --no-payment --no-taint
+
+# Minimum confidence threshold
+code-audit scan . --min-confidence 0.8
+
+# View security trend
+code-audit trend
+
+# Generate example custom rules file
+code-audit rules
+# Basic scan — generates HTML report
+code-audit scan ./my-project
+
+# JSON output for CI integration
+code-audit scan ./my-project --format json
+
+# SARIF for GitHub Security tab
+code-audit scan ./my-project --format sarif
+
+# All formats (HTML + JSON + SARIF + PDF)
+code-audit scan ./my-project --format all
+
+# Incremental scan — only changed files
+code-audit scan . --since HEAD~1
+code-audit scan . --since main
+
+# CI mode: exit 1 if critical findings exist
+code-audit scan . --fail-on critical
+
+# Verify secret format + entropy scoring
+code-audit scan . --verify-secrets
+
+# Use custom rules
+code-audit scan . --custom-rules my-rules.yaml
+
+# Skip specific scanners
+code-audit scan . --no-deps --no-payment --no-taint
+
+# Minimum confidence threshold
+code-audit scan . --min-confidence 0.8
+
+# View security trend
+code-audit trend
+
+# Generate example custom rules file
+code-audit rules
+
+CI/CD Exit Codes
+
+bash
+code-audit scan . --fail-on critical   # Exit 1 if any critical findings
+code-audit scan . --fail-on high       # Exit 1 if high or critical
+code-audit scan . --fail-on medium     # Exit 1 if medium or above
+code-audit scan . --fail-on never      # Always exit 0, just report
+code-audit scan . --fail-on critical   # Exit 1 if any critical findings
+code-audit scan . --fail-on high       # Exit 1 if high or critical
+code-audit scan . --fail-on medium     # Exit 1 if medium or above
+code-audit scan . --fail-on never      # Always exit 0, just report
+
+
+CI/CD Integration
 
 GitHub Actions
 
-Copy templates/github-actions-security-scan.yml to your repo's .github/workflows/ directory:
+yaml
+name: Security Scan
+on: [push, pull_request]
+permissions:
+  contents: read
+  security-events: write
+jobs:
+  code-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install hyperium-code-audit
+      - run: code-audit scan . --format sarif --fail-on critical
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with: { sarif_file: reports/ }
+name: Security Scan
+on: [push, pull_request]
+permissions:
+  contents: read
+  security-events: write
+jobs:
+  code-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install hyperium-code-audit
+      - run: code-audit scan . --format sarif --fail-on critical
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with: { sarif_file: reports/ }
+
+Or use the composite action:
 
 
 yaml
-name: "Security Scan"
+name: Security Scan
 on: [push, pull_request]
 jobs:
   code-audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - run: pip install git+https://github.com/hyperiumia/hyperium-code-audit.git
-      - run: code-audit scan . --format sarif --fail-on critical
-      - uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with: { sarif_file: reports/ }
-name: "Security Scan"
+        with: { fetch-depth: 0 }
+      - uses: hyperiumia/hyperium-code-audit@v4
+        with:
+          path: "."
+          format: "sarif"
+          fail-on: "critical"
+name: Security Scan
 on: [push, pull_request]
 jobs:
   code-audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - run: pip install git+https://github.com/hyperiumia/hyperium-code-audit.git
-      - run: code-audit scan . --format sarif --fail-on critical
-      - uses: github/codeql-action/upload-sarif@v3
-        if: always()
-        with: { sarif_file: reports/ }
+        with: { fetch-depth: 0 }
+      - uses: hyperiumia/hyperium-code-audit@v4
+        with:
+          path: "."
+          format: "sarif"
+          fail-on: "critical"
 
-Templates also available for GitLab CI (templates/gitlab-ci.yml) and Bitbucket Pipelines (templates/bitbucket-pipelines.yml).
+GitLab CI
+
+yaml
+code-audit:
+  image: python:3.12-slim
+  script:
+    - pip install hyperium-code-audit
+    - code-audit scan . --format sarif --fail-on critical
+  artifacts:
+    reports:
+      sast: reports/*.sarif
+code-audit:
+  image: python:3.12-slim
+  script:
+    - pip install hyperium-code-audit
+    - code-audit scan . --format sarif --fail-on critical
+  artifacts:
+    reports:
+      sast: reports/*.sarif
+
+Bitbucket Pipelines
+
+yaml
+pipelines:
+  default:
+    - step:
+        name: Security Scan
+        image: python:3.12
+        script:
+          - pip install hyperium-code-audit
+          - code-audit scan . --format json --fail-on high
+        artifacts:
+          - reports/**
+pipelines:
+  default:
+    - step:
+        name: Security Scan
+        image: python:3.12
+        script:
+          - pip install hyperium-code-audit
+          - code-audit scan . --format json --fail-on high
+        artifacts:
+          - reports/**
+
+Templates available in templates/.
 
 
 
@@ -324,71 +464,103 @@ Architecture
 
 text
 src/
-├── models.py              # Pydantic data models (15 models)
-├── config.py              # Configuration management
-├── pattern_scanner.py     # 22 OWASP Top 10 regex rules
-├── secret_detector.py     # 20 secret patterns + entropy
-├── payment_scanner.py     # 7 payment gateways + Luhn
-├── dep_analyzer.py        # Offline CVE database
-├── ast_engine.py          # Python AST analysis
-├── js_ast_engine.py       # JS/TS tree-sitter AST analysis
-├── taint_analyzer.py      # Python taint/data-flow analysis
-├── secret_verifier.py     # Secret format + entropy verification
-├── payment_logic.py       # Payment security logic analysis
-├── custom_rules.py        # YAML custom rules engine
-├── scan_history.py        # Scan trending + delta analysis
-├── triage_engine.py       # Risk scoring + prioritization
-├── compliance_mapper.py   # OWASP Top 10 mapping
-├── checkpoint_manager.py  # Scan persistence + resume
-├── report_generator.py    # HTML + JSON reports
-├── sarif_exporter.py      # SARIF v2.1.0 export
-├── pdf_report.py          # PDF report generation
-├── engine.py              # Multi-phase pipeline orchestrator
-└── cli.py                 # Rich CLI interface
+  cli.py                 # Rich CLI interface (click + rich)
+  engine.py              # Multi-phase scan pipeline orchestrator
+  models.py              # Pydantic data models (15 models)
+  config.py              # Configuration management
+
+  # ── Scanning Engines ──
+  pattern_scanner.py     # 22 OWASP Top 10 regex rules (8 languages)
+  secret_detector.py     # 20 secret patterns + Shannon entropy
+  secret_verifier.py     # Format validation + entropy scoring
+  payment_scanner.py     # 7 payment gateways + Luhn check
+  payment_logic.py       # Webhook, idempotency, amount analysis
+  dep_analyzer.py        # CVE dependency analysis (65 CVEs)
+  cve_database.py        # Offline CVE database (30 packages)
+  ast_engine.py          # Python AST analysis
+  js_ast_engine.py       # JS/TS tree-sitter AST
+  taint_analyzer.py      # Python taint/data-flow analysis
+  iac_scanner.py         # Dockerfile, Terraform, Kubernetes (v4.0)
+  api_security.py        # API security rules (v4.0)
+  incremental.py         # Git diff based scanning (v4.0)
+
+  # ── Analysis & Reporting ──
+  triage_engine.py       # Risk scoring + prioritization
+  compliance_mapper.py   # OWASP Top 10 mapping
+  custom_rules.py        # YAML custom rules engine
+  scan_history.py        # Trending + delta analysis
+  checkpoint_manager.py  # Scan persistence + resume
+  sarif_exporter.py      # SARIF v2.1.0 export
+  report_generator.py    # HTML + JSON reports
+  pdf_report.py          # PDF generation (reportlab)
 src/
-├── models.py              # Pydantic data models (15 models)
-├── config.py              # Configuration management
-├── pattern_scanner.py     # 22 OWASP Top 10 regex rules
-├── secret_detector.py     # 20 secret patterns + entropy
-├── payment_scanner.py     # 7 payment gateways + Luhn
-├── dep_analyzer.py        # Offline CVE database
-├── ast_engine.py          # Python AST analysis
-├── js_ast_engine.py       # JS/TS tree-sitter AST analysis
-├── taint_analyzer.py      # Python taint/data-flow analysis
-├── secret_verifier.py     # Secret format + entropy verification
-├── payment_logic.py       # Payment security logic analysis
-├── custom_rules.py        # YAML custom rules engine
-├── scan_history.py        # Scan trending + delta analysis
-├── triage_engine.py       # Risk scoring + prioritization
-├── compliance_mapper.py   # OWASP Top 10 mapping
-├── checkpoint_manager.py  # Scan persistence + resume
-├── report_generator.py    # HTML + JSON reports
-├── sarif_exporter.py      # SARIF v2.1.0 export
-├── pdf_report.py          # PDF report generation
-├── engine.py              # Multi-phase pipeline orchestrator
-└── cli.py                 # Rich CLI interface
+  cli.py                 # Rich CLI interface (click + rich)
+  engine.py              # Multi-phase scan pipeline orchestrator
+  models.py              # Pydantic data models (15 models)
+  config.py              # Configuration management
+
+  # ── Scanning Engines ──
+  pattern_scanner.py     # 22 OWASP Top 10 regex rules (8 languages)
+  secret_detector.py     # 20 secret patterns + Shannon entropy
+  secret_verifier.py     # Format validation + entropy scoring
+  payment_scanner.py     # 7 payment gateways + Luhn check
+  payment_logic.py       # Webhook, idempotency, amount analysis
+  dep_analyzer.py        # CVE dependency analysis (65 CVEs)
+  cve_database.py        # Offline CVE database (30 packages)
+  ast_engine.py          # Python AST analysis
+  js_ast_engine.py       # JS/TS tree-sitter AST
+  taint_analyzer.py      # Python taint/data-flow analysis
+  iac_scanner.py         # Dockerfile, Terraform, Kubernetes (v4.0)
+  api_security.py        # API security rules (v4.0)
+  incremental.py         # Git diff based scanning (v4.0)
+
+  # ── Analysis & Reporting ──
+  triage_engine.py       # Risk scoring + prioritization
+  compliance_mapper.py   # OWASP Top 10 mapping
+  custom_rules.py        # YAML custom rules engine
+  scan_history.py        # Trending + delta analysis
+  checkpoint_manager.py  # Scan persistence + resume
+  sarif_exporter.py      # SARIF v2.1.0 export
+  report_generator.py    # HTML + JSON reports
+  pdf_report.py          # PDF generation (reportlab)
 
 Scan Pipeline
 
 text
-Phase 1: DISCOVER    → Find all source files
-Phase 2: SCAN        → Pattern scanner + AST engine + Taint analysis
-Phase 3: SECRETS     → Secret detector + verification
-Phase 4: PAYMENT     → Payment gateway + logic analysis
-Phase 5: DEPS        → Dependency CVE analyzer
-Phase 6: TRIAGE      → Risk scoring + prioritization
-Phase 7: COMPLIANCE  → OWASP Top 10 mapping
-Phase 8: HISTORY     → Save scan for trending
-Phase 9: REPORT      → HTML + JSON + SARIF + PDF generation
-Phase 1: DISCOVER    → Find all source files
-Phase 2: SCAN        → Pattern scanner + AST engine + Taint analysis
-Phase 3: SECRETS     → Secret detector + verification
-Phase 4: PAYMENT     → Payment gateway + logic analysis
-Phase 5: DEPS        → Dependency CVE analyzer
-Phase 6: TRIAGE      → Risk scoring + prioritization
-Phase 7: COMPLIANCE  → OWASP Top 10 mapping
-Phase 8: HISTORY     → Save scan for trending
-Phase 9: REPORT      → HTML + JSON + SARIF + PDF generation
+Phase 0: INCREMENTAL  → Filter to changed files (if --since)
+Phase 1: DISCOVER     → Find all source files
+Phase 2: SCAN         → Pattern scanner + AST engine + Taint analysis
+Phase 3: IaC          → Dockerfile + Terraform + Kubernetes (v4.0)
+Phase 4: API          → API security rules (v4.0)
+Phase 5: SECRETS      → Secret detector + verification
+Phase 6: PAYMENT      → Payment gateway + logic analysis
+Phase 7: DEPS         → Dependency CVE analyzer
+Phase 8: TRIAGE       → Risk scoring + prioritization
+Phase 9: COMPLIANCE   → OWASP Top 10 mapping
+Phase 10: HISTORY     → Save scan for trending
+Phase 11: REPORT      → HTML + JSON + SARIF + PDF generation
+Phase 0: INCREMENTAL  → Filter to changed files (if --since)
+Phase 1: DISCOVER     → Find all source files
+Phase 2: SCAN         → Pattern scanner + AST engine + Taint analysis
+Phase 3: IaC          → Dockerfile + Terraform + Kubernetes (v4.0)
+Phase 4: API          → API security rules (v4.0)
+Phase 5: SECRETS      → Secret detector + verification
+Phase 6: PAYMENT      → Payment gateway + logic analysis
+Phase 7: DEPS         → Dependency CVE analyzer
+Phase 8: TRIAGE       → Risk scoring + prioritization
+Phase 9: COMPLIANCE   → OWASP Top 10 mapping
+Phase 10: HISTORY     → Save scan for trending
+Phase 11: REPORT      → HTML + JSON + SARIF + PDF generation
+
+
+Version History
+
+Version	Tests	Highlights
+v4.0	120	pip install, 65 CVEs, IaC scanning, API security, incremental scan, GitHub Action
+v3.0	102	JS/TS AST, secret verification, payment logic, scan trending
+v2.1	80	Custom rules (YAML), PDF reports, granular CI exit codes
+v2.0	65	SARIF export, taint analysis, CI templates, suppression comments
+v1.0	41	Pattern scanner, secret detector, payment scanner, risk scoring
 
 
 Related Projects
@@ -400,8 +572,12 @@ Hyperium TAT-PRO
 Web application security reconnaissance
 
 
+License
+
+MIT — see LICENSE.
+
+
+
 Built by 
 Hyperium IA
 
-
-Securing LATAM's codebase, one scan at a time.

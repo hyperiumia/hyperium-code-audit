@@ -1,5 +1,5 @@
 """
-CLI for Hyperium Code-Audit v3.0.
+CLI for Hyperium Code-Audit v4.0.
 """
 
 from __future__ import annotations
@@ -10,6 +10,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from src.config import CodeAuditConfig
+from src.incremental import get_changed_files, is_git_repo
 from src.engine import CodeAuditEngine
 from src.report_generator import generate_html, generate_json
 from src.sarif_exporter import generate_sarif
@@ -18,7 +19,7 @@ console = Console()
 
 
 @click.group()
-@click.version_option(version="3.0.0", prog_name="hyperium-code-audit")
+@click.version_option(version="4.0.0", prog_name="hyperium-code-audit")
 def main():
     """Hyperium Code-Audit -- Production-grade source code security scanner."""
     pass
@@ -36,11 +37,12 @@ def main():
 @click.option("--min-confidence", default=0.5, type=float, help="Minimum confidence threshold")
 @click.option("--fail-on", default="critical", type=click.Choice(["critical", "high", "medium", "low", "never"]),
               help="Exit code 1 if findings at this severity exist")
+@click.option("--since", default=None, help="Git ref to diff against (e.g. HEAD~1, main). Only scans changed files.")
 @click.option("--custom-rules", type=click.Path(), help="Custom rules YAML file")
 @click.option("--verify-secrets", is_flag=True, help="Verify secret format + entropy (opt-in)")
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
 def scan(target, config, output, fmt, no_secrets, no_deps, no_payment, no_taint,
-         min_confidence, fail_on, custom_rules, verify_secrets, verbose):
+         min_confidence, fail_on, since, custom_rules, verify_secrets, verbose):
     """Scan a directory for security vulnerabilities."""
     import logging
     logging.basicConfig(level=logging.DEBUG if verbose else logging.WARNING)
@@ -51,13 +53,14 @@ def scan(target, config, output, fmt, no_secrets, no_deps, no_payment, no_taint,
     cfg.scanners.payment_scanner = not no_payment
     cfg.scanners.taint_analyzer = not no_taint
     cfg.scanners.verify_secrets = verify_secrets
+    cfg.scanners.incremental_since = since or ""
     cfg.scanners.min_confidence = min_confidence
     cfg.report.output_dir = output
     if custom_rules:
         cfg.scanners.custom_rules_path = custom_rules
 
     console.print()
-    console.print(Panel("[bold]HYPERIUM CODE-AUDIT v3.0[/bold]\n[dim]Production-grade SAST scanner[/dim]", border_style="cyan"))
+    console.print(Panel("[bold]HYPERIUM CODE-AUDIT v4.0[/bold]\n[dim]Production-grade SAST scanner[/dim]", border_style="cyan"))
     console.print("  [dim]Target:[/dim]    " + target)
     console.print("  [dim]Format:[/dim]    " + fmt)
     console.print("  [dim]Fail on:[/dim]   " + fail_on)
@@ -197,7 +200,7 @@ def trend():
 @main.command()
 def version():
     """Show version information."""
-    console.print("[bold]Hyperium Code-Audit[/bold] v3.0.0")
+    console.print("[bold]Hyperium Code-Audit[/bold] v4.0.0")
 
 
 if __name__ == "__main__":

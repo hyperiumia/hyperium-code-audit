@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hyperium Code-Audit — Production SAST Scanner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --surface: #111111;
+            --surface-alt: #161616;
+            --accent: #c8ff00;
+            --accent-dim: #a0cc00;
+            --text: #e8e8e8;
+            --text-muted: #6b6b6b;
+            --danger: #ff4444;
+            --warning: #ffaa00;
+            --success: #c8ff00;
+            --border: #222222;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Mono', monospace;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+
+        /* ── Nav ── */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: rgba(10, 10, 10, 0.9);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 0;
+        }
+        nav .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: var(--accent);
+            text-decoration: none;
+            letter-spacing: -0.02em;
+        }
+        .logo span { color: var(--text-muted); font-weight: 400; }
+        .nav-links { display: flex; gap: 2rem; list-style: none; }
+        .nav-links a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: color 0.2s;
+        }
+        .nav-links a:hover { color: var(--accent); }
+
+        /* ── Hero ── */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            padding-top: 4rem;
+            position: relative;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 20%;
+            left: -20%;
+            width: 60%;
+            height: 60%;
+            background: radial-gradient(ellipse, rgba(200, 255, 0, 0.03) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .hero-content { max-width: 800px; }
+        .hero-tag {
+            display: inline-block;
+            background: var(--surface-alt);
+            border: 1px solid var(--border);
+            padding: 0.3rem 0.8rem;
+            font-size: 0.75rem;
+            color: var(--accent);
+            margin-bottom: 2rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+        .hero h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-weight: 800;
+            line-height: 1.05;
+            margin-bottom: 1.5rem;
+            letter-spacing: -0.03em;
+        }
+        .hero h1 em {
+            font-style: normal;
+            color: var(--accent);
+        }
+        .hero p {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin-bottom: 2.5rem;
+        }
+        .hero-actions { display: flex; gap: 1rem; flex-wrap: wrap; }
+        .btn-primary {
+            background: var(--accent);
+            color: var(--bg);
+            padding: 0.8rem 1.6rem;
+            font-family: 'DM Mono', monospace;
+            font-weight: 500;
+            font-size: 0.9rem;
+            border: none;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover {
+            background: #deff33;
+            letter-spacing: 0.05em;
+        }
+        .btn-secondary {
+            background: transparent;
+            color: var(--text);
+            padding: 0.8rem 1.6rem;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.9rem;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* ── Install ── */
+        .install-block {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1.5rem 2rem;
+            margin-top: 3rem;
+            position: relative;
+            max-width: 600px;
+        }
+        .install-block code {
+            color: var(--accent);
+            font-size: 1rem;
+        }
+        .install-label {
+            position: absolute;
+            top: -0.6rem;
+            left: 1rem;
+            background: var(--bg);
+            padding: 0 0.5rem;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        /* ── Stats ── */
+        .stats {
+            padding: 6rem 0;
+            border-top: 1px solid var(--border);
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+        }
+        .stat {
+            text-align: center;
+        }
+        .stat-number {
+            font-family: 'Syne', sans-serif;
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--accent);
+            line-height: 1;
+        }
+        .stat-label {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+
+        /* ── Features ── */
+        .features { padding: 6rem 0; }
+        .section-header {
+            margin-bottom: 4rem;
+        }
+        .section-header h2 {
+            font-family: 'Syne', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+        }
+        .section-header p {
+            color: var(--text-muted);
+            max-width: 600px;
+        }
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+        .feature-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 2rem;
+            transition: border-color 0.3s;
+        }
+        .feature-card:hover { border-color: var(--accent); }
+        .feature-icon {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--accent);
+        }
+        .feature-card h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.8rem;
+        }
+        .feature-card p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+        .feature-tag {
+            display: inline-block;
+            background: rgba(200, 255, 0, 0.1);
+            color: var(--accent);
+            padding: 0.15rem 0.5rem;
+            font-size: 0.7rem;
+            margin-top: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* ── Comparison Table ── */
+        .comparison { padding: 6rem 0; }
+        .table-wrapper {
+            overflow-x: auto;
+            border: 1px solid var(--border);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        th, td {
+            padding: 0.8rem 1.2rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        th {
+            background: var(--surface-alt);
+            font-family: 'Syne', sans-serif;
+            font-weight: 600;
+            color: var(--accent);
+            position: sticky;
+            top: 0;
+        }
+        tr:hover { background: var(--surface); }
+        .check { color: var(--success); }
+        .cross { color: var(--text-muted); }
+
+        /* ── Versions ── */
+        .versions { padding: 6rem 0; }
+        .version-timeline { position: relative; padding-left: 2rem; }
+        .version-timeline::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--border);
+        }
+        .version-item {
+            position: relative;
+            padding-bottom: 3rem;
+        }
+        .version-item::before {
+            content: '';
+            position: absolute;
+            left: -2rem;
+            top: 0.3rem;
+            width: 10px;
+            height: 10px;
+            background: var(--accent);
+            border-radius: 50%;
+            transform: translateX(-4px);
+        }
+        .version-item.latest::before {
+            width: 14px;
+            height: 14px;
+            box-shadow: 0 0 12px rgba(200, 255, 0, 0.4);
+        }
+        .version-header {
+            display: flex;
+            align-items: baseline;
+            gap: 1rem;
+            margin-bottom: 0.8rem;
+        }
+        .version-header h3 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+        .version-date { color: var(--text-muted); font-size: 0.8rem; }
+        .version-item ul {
+            list-style: none;
+            padding: 0;
+        }
+        .version-item li {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            padding: 0.2rem 0;
+            padding-left: 1.2rem;
+            position: relative;
+        }
+        .version-item li::before {
+            content: '+';
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+            font-weight: bold;
+        }
+
+        /* ── CI Templates ── */
+        .ci-templates { padding: 6rem 0; }
+        .code-block {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+            font-size: 0.8rem;
+            line-height: 1.7;
+        }
+        .code-block .comment { color: var(--text-muted); }
+        .code-block .cmd { color: var(--accent); }
+        .code-block .key { color: #88aaff; }
+
+        /* ── Footer ── */
+        footer {
+            padding: 4rem 0;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+        footer p { color: var(--text-muted); font-size: 0.8rem; }
+        footer a { color: var(--accent); text-decoration: none; }
+
+        /* ── Animations ── */
+        .fade-up {
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeUp 0.7s ease forwards;
+        }
+        @keyframes fadeUp {
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        .delay-3 { animation-delay: 0.3s; }
+        .delay-4 { animation-delay: 0.4s; }
+        .delay-5 { animation-delay: 0.5s; }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2rem; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .features-grid { grid-template-columns: 1fr; }
+            .nav-links { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="container">
+            <a href="#" class="logo">HYPERIUM <span>code-audit</span></a>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#comparison">Compare</a></li>
+                <li><a href="#versions">Versions</a></li>
+                <li><a href="#ci">CI/CD</a></li>
+                <li><a href="https://github.com/hyperiumia/hyperium-code-audit">GitHub</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <span class="hero-tag fade-up">v4.0.0 — Production Release</span>
+                <h1 class="fade-up delay-1">Find vulnerabilities<br>before <em>attackers</em> do</h1>
+                <p class="fade-up delay-2">
+                    Production-grade SAST scanner. OWASP Top 10 patterns, hardcoded secrets,
+                    payment gateways, vulnerable dependencies, and infrastructure misconfigurations
+                    — scanned in seconds, no cloud required.
+                </p>
+                <div class="hero-actions fade-up delay-3">
+                    <a href="https://github.com/hyperiumia/hyperium-code-audit" class="btn-primary">View on GitHub</a>
+                    <a href="#features" class="btn-secondary">See what it scans</a>
+                </div>
+                <div class="install-block fade-up delay-4">
+                    <span class="install-label">Quick Start</span>
+                    <code>pip install hyperium-code-audit && code-audit scan .</code>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="stats">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat fade-up">
+                    <div class="stat-number">120</div>
+                    <div class="stat-label">Tests passing</div>
+                </div>
+                <div class="stat fade-up delay-1">
+                    <div class="stat-number">22</div>
+                    <div class="stat-label">OWASP rules</div>
+                </div>
+                <div class="stat fade-up delay-2">
+                    <div class="stat-number">65</div>
+                    <div class="stat-label">Real CVEs tracked</div>
+                </div>
+                <div class="stat fade-up delay-3">
+                    <div class="stat-number">20+</div>
+                    <div class="stat-label">Secret patterns</div>
+                </div>
+                <div class="stat fade-up delay-4">
+                    <div class="stat-number">7</div>
+                    <div class="stat-label">Payment gateways</div>
+                </div>
+                <div class="stat fade-up delay-5">
+                    <div class="stat-number">30</div>
+                    <div class="stat-label">Packages audited</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-header">
+                <h2>What it scans</h2>
+                <p>Seven scanning engines working together. No cloud, no API keys, no telemetry.</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card fade-up">
+                    <div class="feature-icon">&#9632;</div>
+                    <h3>OWASP Top 10 Patterns</h3>
+                    <p>22 detection rules covering SQL injection, XSS, SSRF, command injection, path traversal, insecure deserialization, and more.</p>
+                    <span class="feature-tag">Pattern Scanner</span>
+                </div>
+                <div class="feature-card fade-up delay-1">
+                    <div class="feature-icon">&#9632;</div>
+                    <h3>Hardcoded Secrets</h3>
+                    <p>20+ patterns: AWS keys, Stripe, GitHub tokens, JWT, database URLs, private keys. Shannon entropy verification to reduce false positives.</p>
+                    <span class="feature-tag">Secret Detector</span>
+                </div>
+                <div class="feature-card fade-up delay-2">
+                    <div class="feature-icon">&#9632;</div>
+                    <h3>Payment Gateway Exposure</h3>
+                    <p>Stripe, MercadoPago, PayPal, Conekta, Culqi, Wompi, Square. Plus payment logic: webhook verification, idempotency, amount validation.</p>
+                    <span class="feature-tag">Payment Scanner</span>
+                </div>
+                <div class="feature-card fade-up delay-3">
+                    <div class="feature-icon">&#9632;</div>
+                    <h3>Vulnerable Dependencies</h3>
+                    <p>65 real CVEs across 30 popular Python and JavaScript packages. Offline database, no network required.</p>
+                    <span class="feature-tag">Dependency Analyzer</span>
+                </div>
+                <div class="feature-card fade-up delay-4">
+                    <div class="feature-icon">&#9632;</div>
+                    <h3>Taint Analysis</h3>
+                    <p>Data-flow tracking from user input to dangerous sinks in Python. Tracks through assignments, function calls, and concatenation.</p>
+                    <span class="feature-tag">AST Engine</span>
+                </div>
+                <div class="feature-card fade-up delay-5">
+                    <div class="feature-icon">&#9632;</div>
+                    <h3>Infrastructure as Code</h3>
+                    <p>Dockerfile (root user, secrets in ENV, curl pipe), Terraform (public S3, exposed RDS, unencrypted storage), Kubernetes (privileged, hostNetwork).</p>
+                    <span class="feature-tag">IaC Scanner</span>
+                </div>
+                <div class="feature-card fade-up">
+                    <div class="feature-icon">&#9632;</div>
+                    <h3>API Security</h3>
+                    <p>CORS wildcards, debug mode in production, endpoints without authentication, error detail leaks, HTTP endpoints.</p>
+                    <span class="feature-tag">API Security</span>
+                </div>
+                <div class="feature-card fade-up delay-1">
+                    <div class="feature-icon">&#9632;</div>
+                    <h3>JS/TS AST Analysis</h3>
+                    <p>Tree-sitter powered analysis for JavaScript and TypeScript. Detects dangerous patterns beyond regex matching.</p>
+                    <span class="feature-tag">JS/TS Engine</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="comparison" id="comparison">
+        <div class="container">
+            <div class="section-header">
+                <h2>How it compares</h2>
+                <p>Code-Audit vs the tools you already know.</p>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>Code-Audit</th>
+                            <th>Semgrep</th>
+                            <th>Bandit</th>
+                            <th>Snyk Code</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>OWASP Top 10 patterns</td><td class="check">22 rules</td><td class="check">Yes</td><td class="cross">Partial</td><td class="check">Yes</td></tr>
+                        <tr><td>Python AST analysis</td><td class="check">Yes</td><td class="check">Yes</td><td class="check">Yes</td><td class="check">Yes</td></tr>
+                        <tr><td>JS/TS AST (tree-sitter)</td><td class="check">Yes</td><td class="check">Yes</td><td class="cross">No</td><td class="check">Yes</td></tr>
+                        <tr><td>Taint analysis</td><td class="check">Yes</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">Partial</td></tr>
+                        <tr><td>Secret detection (20 patterns)</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+                        <tr><td>Secret entropy verification</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+                        <tr><td>Payment gateway scan (7)</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+                        <tr><td>Payment logic analysis</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+                        <tr><td>Dependency CVE check</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="check">Yes</td></tr>
+                        <tr><td>IaC scanning</td><td class="check">Yes</td><td class="cross">Partial</td><td class="cross">No</td><td class="check">Yes</td></tr>
+                        <tr><td>Custom rules (YAML)</td><td class="check">Yes</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td></tr>
+                        <tr><td>SARIF export</td><td class="check">Yes</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td></tr>
+                        <tr><td>PDF reports</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+                        <tr><td>Scan trending</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+                        <tr><td>Granular CI exit codes</td><td class="check">Yes</td><td class="check">Yes</td><td class="check">Yes</td><td class="check">Yes</td></tr>
+                        <tr><td>Offline operation</td><td class="check">Yes</td><td class="check">Yes</td><td class="check">Yes</td><td class="cross">No</td></tr>
+                        <tr><td>Incremental scan (git diff)</td><td class="check">Yes</td><td class="cross">No</td><td class="cross">No</td><td class="cross">No</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="versions" id="versions">
+        <div class="container">
+            <div class="section-header">
+                <h2>Version history</h2>
+                <p>Five releases. Every feature built, tested, and documented.</p>
+            </div>
+            <div class="version-timeline">
+                <div class="version-item latest">
+                    <div class="version-header">
+                        <h3>v4.0.0</h3>
+                        <span class="version-date">July 2026</span>
+                    </div>
+                    <ul>
+                        <li>pip install packaging with code-audit CLI command</li>
+                        <li>Real CVE database (65 CVEs, 30 packages)</li>
+                        <li>IaC scanning (Dockerfile, Terraform, Kubernetes)</li>
+                        <li>API security rules (CORS, debug, auth, error leaks)</li>
+                        <li>Incremental scanning (--since git diff)</li>
+                        <li>GitHub Actions CI/CD pipeline</li>
+                        <li>120 tests</li>
+                    </ul>
+                </div>
+                <div class="version-item">
+                    <div class="version-header">
+                        <h3>v3.0.0</h3>
+                        <span class="version-date">July 2026</span>
+                    </div>
+                    <ul>
+                        <li>JS/TS AST engine (tree-sitter)</li>
+                        <li>Secret verification (format + entropy)</li>
+                        <li>Payment logic analysis (webhooks, idempotency, amounts)</li>
+                        <li>Scan trending and delta analysis</li>
+                        <li>102 tests</li>
+                    </ul>
+                </div>
+                <div class="version-item">
+                    <div class="version-header">
+                        <h3>v2.1.0</h3>
+                        <span class="version-date">July 2026</span>
+                    </div>
+                    <ul>
+                        <li>Custom rules engine (YAML)</li>
+                        <li>PDF report generation</li>
+                        <li>Granular CI exit codes</li>
+                        <li>80 tests</li>
+                    </ul>
+                </div>
+                <div class="version-item">
+                    <div class="version-header">
+                        <h3>v2.0.0</h3>
+                        <span class="version-date">July 2026</span>
+                    </div>
+                    <ul>
+                        <li>SARIF v2.1.0 export</li>
+                        <li>Taint analysis (Python data-flow)</li>
+                        <li>Suppression comments</li>
+                        <li>65 tests</li>
+                    </ul>
+                </div>
+                <div class="version-item">
+                    <div class="version-header">
+                        <h3>v1.0.0</h3>
+                        <span class="version-date">July 2026</span>
+                    </div>
+                    <ul>
+                        <li>Pattern scanner (22 OWASP rules)</li>
+                        <li>Secret detector (20 patterns)</li>
+                        <li>Payment scanner (7 LATAM gateways)</li>
+                        <li>Python AST analysis, risk scoring</li>
+                        <li>41 tests</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="ci-templates" id="ci">
+        <div class="container">
+            <div class="section-header">
+                <h2>CI/CD in 30 seconds</h2>
+                <p>Drop these into your repo. Works with GitHub, GitLab, and Bitbucket.</p>
+            </div>
+
+            <h3 style="font-family: 'Syne', sans-serif; margin-bottom: 1rem;">GitHub Actions</h3>
+            <div class="code-block">
+<pre><span class="comment"># .github/workflows/security.yml</span>
+<span class="key">name:</span> Security Scan
+<span class="key">on:</span> [push, pull_request]
+<span class="key">jobs:</span>
+  <span class="key">code-audit:</span>
+    <span class="key">runs-on:</span> ubuntu-latest
+    <span class="key">steps:</span>
+      - <span class="key">uses:</span> actions/checkout@v4
+      - <span class="key">uses:</span> actions/setup-python@v5
+        <span class="key">with:</span> { python-version: <span class="cmd">"3.12"</span> }
+      - <span class="key">run:</span> <span class="cmd">pip install hyperium-code-audit</span>
+      - <span class="key">run:</span> <span class="cmd">code-audit scan . --format sarif --fail-on critical</span>
+      - <span class="key">uses:</span> github/codeql-action/upload-sarif@v3
+        <span class="key">if:</span> always()
+        <span class="key">with:</span> { sarif_file: reports/ }</pre>
+            </div>
+
+            <h3 style="font-family: 'Syne', sans-serif; margin: 2rem 0 1rem;">GitLab CI</h3>
+            <div class="code-block">
+<pre><span class="comment"># .gitlab-ci.yml</span>
+<span class="key">code-audit:</span>
+  <span class="key">image:</span> <span class="cmd">python:3.12-slim</span>
+  <span class="key">script:</span>
+    - <span class="cmd">pip install hyperium-code-audit</span>
+    - <span class="cmd">code-audit scan . --format sarif --fail-on critical</span>
+  <span class="key">artifacts:</span>
+    <span class="key">reports:</span>
+      <span class="key">sast:</span> reports/*.sarif</pre>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>Built by <a href="https://github.com/hyperiumia">Hyperium IA</a> &mdash; v4.0.0 &mdash; MIT License</p>
+        </div>
+    </footer>
+
+    <script>
+        // Intersection Observer for scroll animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.animationPlayState = 'running';
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.fade-up').forEach(el => {
+            el.style.animationPlayState = 'paused';
+            observer.observe(el);
+        });
+    </script>
+</body>
+</html>
