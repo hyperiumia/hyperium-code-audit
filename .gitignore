@@ -15,3 +15,9 @@ reports/
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# IP Protection — source backups (never commit)
+*.protected
+*.c
+*.pyd
+build_protected.py
