@@ -556,12 +556,17 @@ class PatternScanner:
         findings: List[Finding] = []
         seen: set = set()  # Deduplicate same rule at same line
 
+        from src.luau_lexer import mask_comments_and_strings
+        masked = mask_comments_and_strings(content)
+
         for rule in applicable_rules:
             if rule._compiled is None:
                 continue
+            scope = getattr(rule, "match_scope", "content")
+            haystack = masked if scope == "code" else content
             try:
-                for match in rule._compiled.finditer(content):
-                    line_number = content[:match.start()].count("\n") + 1
+                for match in rule._compiled.finditer(haystack):
+                    line_number = haystack[:match.start()].count("\n") + 1
                     dedup_key = (rule.id, file_path, line_number)
                     if dedup_key in seen:
                         continue

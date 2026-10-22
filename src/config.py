@@ -37,8 +37,8 @@ class ScannerConfig(BaseModel):
     custom_rules_path: Optional[str] = None
     entropy_threshold: float = 4.5
     scan_env_files: bool = True
-    check_epss: bool = True
-    check_cisa_kev: bool = True
+    check_epss: bool = False
+    check_cisa_kev: bool = False
     dep_api_timeout: int = 10
 
 
