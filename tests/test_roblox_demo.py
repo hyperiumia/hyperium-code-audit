@@ -47,7 +47,7 @@ def test_sarif_export_contains_roblox_rules(tmp_path):
 
     result = _scan_demo()
     out = tmp_path / "roblox.sarif"
-    generate_sarif(result, str(out))
+    generate_sarif(result, out)
     text = out.read_text()
     assert "RBX-BD-001" in text
     assert "RBX-TRUST-001" in text
