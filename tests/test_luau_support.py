@@ -26,7 +26,7 @@ def test_engine_scans_luau_with_custom_rule(tmp_path):
         "    severity: critical\n"
         "    category: security_misconfig\n"
         "    languages: [luau]\n"
-        "    pattern: 'loadstring\$$'\n"
+        "    pattern: 'loadstring[(]'\n"
         "    confidence: 0.9\n"
     )
     (tmp_path / "main.luau").write_text(
