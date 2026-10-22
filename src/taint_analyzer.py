@@ -6,7 +6,7 @@ protection. The compiled .so/.pyd file is required for operation.
 
 To use this module:
   - Install via pip: pip install hyperium-code-audit (includes pre-built binary)
-  - Or build from source: python build_protected.py (requires Cython + source license)
+  - Or build from source: a commercial build script provided by Hyperium IA (source license)
 
 The .protected source files are available under a separate commercial license.
 Contact: https://github.com/hyperiumia/hyperium-code-audit/issues
