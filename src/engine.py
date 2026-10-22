@@ -22,7 +22,7 @@ from src.models import (
     Finding, ScanResult, ScanStats,
 )
 from src.config import CodeAuditConfig
-from src.pattern_scanner import PatternScanner, detect_language
+from src.pattern_scanner import ALL_RULES, PatternScanner, detect_language
 from src.custom_rules import load_custom_rules
 from src.secret_detector import SecretDetector
 from src.payment_scanner import PaymentScanner
@@ -68,6 +68,7 @@ class CodeAuditEngine:
                 logger.warning(f"Could not load custom rules: {e}")
 
         self.pattern_scanner = PatternScanner(
+            rules=ALL_RULES + extra_rules,
             min_confidence=self.config.scanners.min_confidence,
             exclude_rules=self.config.scanners.exclude_rules,
         )
