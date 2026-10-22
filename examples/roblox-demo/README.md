@@ -10,6 +10,6 @@ Proyecto de demostracion del rule pack Roblox. Archivos separados:
 
 Escanear:
 
-    code-audit scan examples/roblox-demo --rules rulepacks/roblox.yaml
+    code-audit scan examples/roblox-demo --custom-rules rulepacks/roblox.yaml
 
 NOTA: los patrones son simulaciones inofensivas con fines educativos.

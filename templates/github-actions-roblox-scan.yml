@@ -15,7 +15,7 @@ jobs:
           python-version: "3.12"
       - run: pip install hyperium-code-audit
       - name: Scan Luau with Roblox rule pack
-        run: code-audit scan . --rules rulepacks/roblox.yaml --format sarif --output roblox.sarif
+        run: code-audit scan . --custom-rules rulepacks/roblox.yaml --format sarif -o reports
       - uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: roblox.sarif
+          sarif_file: reports/
