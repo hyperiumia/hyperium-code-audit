@@ -108,7 +108,7 @@ rules:
     cwe_id: CWE-20
     owasp_id: A04
     languages: [lua, luau]
-    pattern: 'OnServerEvent[.]Connect'
+    pattern: 'OnServerEvent[:.]Connect'
     description: Every OnServerEvent handler is an untrusted client entry point; missing argument validation enables exploits and dupes.
     remediation: Validate types, ranges and rate limits server-side before mutating state.
     confidence: 0.6
