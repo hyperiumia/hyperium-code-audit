@@ -1,7 +1,7 @@
 """Central redaction — secretos nunca llegan a persistencia ni exportacion.
 
-Fase 6.3 (P1): todo texto adjunto a hallazgos pasa por redact_text()
-antes de guardarse o exportarse (JSON, SARIF, HTML, PDF).
+v2: redaccion por lista blanca de campos, sin recursion profunda
+(los enums y objetos internos no se recorren).
 """
 
 from __future__ import annotations
@@ -14,6 +14,11 @@ _WEBHOOK = re.compile(r"(discord(?:app)?[.]com/api/webhooks/[0-9]+/)([A-Za-z0-9_
 _AWSKEY = re.compile(r"AKIA[0-9A-Z]{16}")
 _BEARER = re.compile(r"(Bearer[ ]+)([A-Za-z0-9_.-]{8,})")
 _GENERIC = re.compile(r"(?i)(token|secret|password|api[_-]?key)[ :=]+[\"']?([A-Za-z0-9_.-]{8,})")
+
+_TEXT_FIELDS = {"code_snippet", "title", "description", "remediation",
+                "impact", "value", "raw", "snippet", "evidence", "message"}
+_LIST_FIELDS = {"references", "tags"}
+_DICT_FIELDS = {"metadata", "context", "extra"}
 
 
 def _keep_prefix(m):
@@ -37,42 +42,34 @@ def redact_text(text):
 
 def redact_result(result) -> None:
     """Redact in place: findings, secrets y payment findings."""
-    for bucket in (getattr(result, "findings", None) or [],
-                   getattr(result, "secrets", None) or [],
-                   getattr(result, "payment_findings", None) or []):
-        for obj in bucket:
+    for bucket in ("findings", "secrets", "payment_findings"):
+        for obj in getattr(result, bucket, None) or []:
             _redact_obj(obj)
 
 
-def _redact_obj(obj, depth: int = 0) -> None:
-    if obj is None or depth > 8:
-        return
-    if isinstance(obj, (list, tuple, set)):
-        for item in obj:
-            _redact_obj(item, depth + 1)
-        return
-    if isinstance(obj, dict):
-        for key, val in list(obj.items()):
-            if type(val) is str:
-                obj[key] = redact_text(val)
-            else:
-                _redact_obj(val, depth + 1)
-        return
-    names = []
-    mf = getattr(type(obj), "model_fields", None)
-    if mf:
-        names = list(mf.keys())
+def _redact_obj(obj) -> None:
+    fields = getattr(type(obj), "model_fields", None)
+    if fields:
+        names = list(fields.keys())
     elif hasattr(obj, "__dict__"):
-        names = list(vars(obj).keys())
+        names = [k for k in vars(obj).keys() if not k.startswith("_")]
+    else:
+        return
     for name in names:
         try:
             val = getattr(obj, name)
         except Exception:
             continue
-        if type(val) is str:
+        if name in _TEXT_FIELDS and type(val) is str:
             try:
                 setattr(obj, name, redact_text(val))
             except Exception:
                 pass
-        else:
-            _redact_obj(val, depth + 1)
+        elif name in _LIST_FIELDS and isinstance(val, list):
+            for i, item in enumerate(val):
+                if type(item) is str:
+                    val[i] = redact_text(item)
+        elif name in _DICT_FIELDS and isinstance(val, dict):
+            for k, v in list(val.items()):
+                if type(v) is str:
+                    val[k] = redact_text(v)
