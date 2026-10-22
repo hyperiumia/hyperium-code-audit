@@ -53,13 +53,13 @@ def _redact_obj(obj, depth: int = 0) -> None:
         return
     if isinstance(obj, dict):
         for key, val in list(obj.items()):
-            if isinstance(val, str):
+            if type(val) is str:
                 obj[key] = redact_text(val)
             else:
                 _redact_obj(val, depth + 1)
         return
     names = []
-    mf = getattr(obj, "model_fields", None)
+    mf = getattr(type(obj), "model_fields", None)
     if mf:
         names = list(mf.keys())
     elif hasattr(obj, "__dict__"):
@@ -69,7 +69,7 @@ def _redact_obj(obj, depth: int = 0) -> None:
             val = getattr(obj, name)
         except Exception:
             continue
-        if isinstance(val, str):
+        if type(val) is str:
             try:
                 setattr(obj, name, redact_text(val))
             except Exception:
