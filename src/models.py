@@ -196,6 +196,7 @@ class ScanStats(BaseModel):
     files_by_language: Dict[str, int] = Field(default_factory=dict)
     errors: List[str] = Field(default_factory=list)
     skipped_files: int = 0
+    discovery_notes: List[str] = []
 
 
 class ScanResult(BaseModel):
