@@ -487,6 +487,11 @@ EXTENSION_MAP: Dict[str, Language] = {
 
 
 def detect_language(file_path: Path) -> Language:
+    _fname = str(file_path).lower()
+    if _fname.endswith(".luau"):
+        return Language.LUAU
+    if _fname.endswith(".lua"):
+        return Language.LUA
     """Detect programming language from file extension."""
     return EXTENSION_MAP.get(file_path.suffix.lower(), Language.UNKNOWN)
 
