@@ -586,3 +586,5 @@ Hyperium IA
 ## Documentation
 
 - [Technical Report v4.0](docs/TECHNICAL-REPORT.md) - arquitectura, modulo Roblox/Luau, resultados de la auditoria de ingenieria
+
+- [Stabilization & External Review Closure](docs/STABILIZATION-REPORT.md) - 17 escenarios de revision externa: correcciones, aceptacion y metricas
