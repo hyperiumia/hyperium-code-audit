@@ -250,8 +250,8 @@ Hyperium Code-Audit es un analizador **estatico**. Su alcance y sus limites se d
 
     pip install hyperium-code-audit
     code-audit scan ./mi-proyecto                          # analisis estandar
-    code-audit scan . --rules rulepacks/roblox.yaml        # con rule pack Roblox
-    code-audit scan . --format sarif --output roblox.sarif # para GitHub Security
+    code-audit scan . --custom-rules rulepacks/roblox.yaml # con rule pack Roblox
+    code-audit scan . --format sarif -o reports/           # SARIF en reports/ (GitHub Security)
     code-audit scan . --since main                         # incremental (PRs)
     code-audit scan . --fail-on critical                   # gate de CI
 
