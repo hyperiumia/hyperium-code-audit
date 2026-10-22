@@ -59,6 +59,15 @@ def scan(target, config, output, fmt, no_secrets, no_deps, no_payment, no_taint,
     if custom_rules:
         cfg.scanners.custom_rules_path = custom_rules
 
+    if cfg.scanners.custom_rules_path:
+        try:
+            from src.custom_rules import load_custom_rules as _validate_pack
+            _validate_pack(cfg.scanners.custom_rules_path)
+        except Exception as e:
+            console.print("[bold red]Exit 2: custom rules pack rejected[/bold red]")
+            console.print("  [red]![/red] " + str(e))
+            sys.exit(2)
+
     console.print()
     console.print(Panel("[bold]HYPERIUM CODE-AUDIT v4.0[/bold]\n[dim]Production-grade SAST scanner[/dim]", border_style="cyan"))
     console.print("  [dim]Target:[/dim]    " + target)
@@ -79,6 +88,11 @@ def scan(target, config, output, fmt, no_secrets, no_deps, no_payment, no_taint,
         result = engine.scan(target)
 
     console.print()
+    files_by_lang = getattr(result.stats, "files_by_language", {}) or {}
+    if any(k in ("lua", "luau") for k in files_by_lang) and not cfg.scanners.custom_rules_path:
+        console.print("[yellow]WARNING: no custom rule pack active[/yellow]")
+        console.print("  [dim]Lua/Luau files found but domain rules were not applied[/dim]")
+
     risk = result.risk_score
     rc = {"critical": "red", "high": "orange", "medium": "yellow", "low": "green", "info": "blue"}.get(
         risk.risk_level.value if risk else "info", "blue")
@@ -141,6 +155,17 @@ def scan(target, config, output, fmt, no_secrets, no_deps, no_payment, no_taint,
             console.print("  [dim]PDF skipped: " + str(e) + "[/dim]")
 
     console.print()
+    op_errors = list(getattr(result.stats, "errors", []) or [])
+    state = "failed"
+    if result.stats.total_files_scanned:
+        state = "partial" if op_errors else "completed"
+    console.print("[bold yellow]Status: " + state.upper() + "[/bold yellow]")
+    if op_errors:
+        for err in op_errors:
+            console.print("  [red]![/red] " + str(err))
+        console.print("[bold red]Exit 2: operational errors[/bold red]")
+        sys.exit(2)
+
     exit_code = _calculate_exit_code(risk, fail_on)
     if exit_code != 0:
         console.print("[bold red]✗ Exit " + str(exit_code) + ": findings at " + fail_on + "+ detected[/bold red]")
