@@ -116,7 +116,7 @@ class CodeAuditEngine:
         result = ScanResult(
             target_path=str(target),
             started_at=datetime.now(timezone.utc).isoformat(),
-            tool_version="1.0.0",
+            tool_version="4.0.0",
         )
 
         # Config hash for checkpoint validation
