@@ -54,8 +54,8 @@ def test_cli_announces_degraded_modules(tmp_path):
     (target / "a.py").write_text("x = 1\n")
     args = ["scan", str(target), "--no-deps", "--format", "json",
             "-o", str(tmp_path / "o")]
-    with patch.object(pl, "COMPILED_AVAILABLE", False), \
-         patch.object(ta, "COMPILED_AVAILABLE", False):
+    with patch.object(pl, "COMPILED_AVAILABLE", False, create=True), \
+         patch.object(ta, "COMPILED_AVAILABLE", False, create=True):
         r = CliRunner().invoke(main, args)
     assert "optional compiled modules unavailable" in r.output.lower(), \
         "la degradacion de modulos comerciales debe anunciarse"
