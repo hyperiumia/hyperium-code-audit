@@ -60,12 +60,14 @@ class CodeAuditEngine:
         self._progress_callback: Optional[Callable] = None
 
         # Initialize scanners
+        self._config_errors: List[str] = []
         extra_rules = []
         if self.config.scanners.custom_rules_path:
             try:
                 extra_rules = load_custom_rules(self.config.scanners.custom_rules_path)
             except Exception as e:
                 logger.warning(f"Could not load custom rules: {e}")
+                self._config_errors.append(f"custom rules pack could not be loaded: {e}")
 
         self.pattern_scanner = PatternScanner(
             rules=ALL_RULES + extra_rules,
@@ -224,8 +226,15 @@ class CodeAuditEngine:
         except Exception as e:
             logger.error(f"Scan failed: {e}", exc_info=True)
             self.checkpoint_mgr.record_error(str(e))
+            try:
+                result.stats.errors.append(f"{type(e).__name__}: {e}")
+            except Exception:
+                self._config_errors.append(f"{type(e).__name__}: {e}")
         finally:
             # Finalize
+            for _err in self._config_errors:
+                if _err not in result.stats.errors:
+                    result.stats.errors.append(_err)
             elapsed = time.monotonic() - started
             result.completed_at = datetime.now(timezone.utc).isoformat()
             result.stats.total_files_scanned = len(source_files) if 'source_files' in dir() else 0
