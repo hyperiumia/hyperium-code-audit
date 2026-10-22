@@ -3,8 +3,11 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 from click.testing import CliRunner
+
+from src.cli import main
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -29,7 +32,8 @@ def test_loader_degrades_without_binary(tmp_path):
     shutil.copy(src, dst)
     code = (
         "import importlib.util\n"
-        "spec = importlib.util.spec_from_file_location('payment_logic', " + repr(str(dst)) + ")\n"
+        "spec = importlib.util.spec_from_file_location('payment_logic', "
+        + repr(str(dst)) + ")\n"
         "m = importlib.util.module_from_spec(spec)\n"
         "spec.loader.exec_module(m)\n"
         "assert m.COMPILED_AVAILABLE is False, 'flag no expuesto'\n"
@@ -44,17 +48,14 @@ def test_loader_degrades_without_binary(tmp_path):
 def test_cli_announces_degraded_modules(tmp_path):
     import src.payment_logic as pl
     import src.taint_analyzer as ta
-    from unittest.mock import patch
 
     target = tmp_path / "proj"
     target.mkdir()
     (target / "a.py").write_text("x = 1\n")
+    args = ["scan", str(target), "--no-deps", "--format", "json",
+            "-o", str(tmp_path / "o")]
     with patch.object(pl, "COMPILED_AVAILABLE", False), \
          patch.object(ta, "COMPILED_AVAILABLE", False):
-        r = CliRunner().invoke(main=["scan", str(target), "--no-deps",
-                                     "--format", "json", "-o", str(tmp_path / "o")] and
-               __import__("src.cli", fromlist=["main"]).main,
-               ["scan", str(target), "--no-deps", "--format", "json",
-                "-o", str(tmp_path / "o")])
+        r = CliRunner().invoke(main, args)
     assert "optional compiled modules unavailable" in r.output.lower(), \
         "la degradacion de modulos comerciales debe anunciarse"
