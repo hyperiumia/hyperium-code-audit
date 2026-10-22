@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # File extensions to scan
 SCAN_EXTENSIONS = {
     ".py", ".js", ".jsx", ".ts", ".tsx", ".php",
-    ".java", ".go", ".cs", ".rb", ".html", ".htm",
+    ".java", ".go", ".cs", ".rb", ".lua", ".luau", ".html", ".htm",
     ".vue", ".ejs", ".hbs", ".env", ".yaml", ".yml",
     ".json", ".xml", ".toml", ".cfg", ".ini", ".conf",
 }
