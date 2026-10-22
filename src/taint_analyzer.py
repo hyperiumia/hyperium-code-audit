@@ -35,6 +35,7 @@ def _load_compiled():
     return None
 
 _compiled = _load_compiled()
+COMPILED_AVAILABLE = _compiled is not None
 if _compiled:
     # Re-export everything from the compiled module
     if hasattr(_compiled, "TaintAnalyzer"):
@@ -46,8 +47,17 @@ if _compiled:
         if not attr.startswith("_"):
             globals()[attr] = getattr(_compiled, attr)
 else:
-    raise ImportError(
-        f"Compiled binary for taint_analyzer not found. "
-        "Install via pip (pip install hyperium-code-audit) for pre-built binaries, "
-        "or build from source with a commercial license."
-    )
+    # Open core: compiled commercial component is optional.
+    COMPILED_AVAILABLE = False
+
+    class _Unavailable:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __getattr__(self, name):
+            def _noop(*args, **kwargs):
+                return []
+            return _noop
+
+    PaymentLogicAnalyzer = _Unavailable
+    TaintAnalyzer = _Unavailable

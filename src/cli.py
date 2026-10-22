@@ -93,6 +93,16 @@ def scan(target, config, output, fmt, no_secrets, no_deps, no_payment, no_taint,
         console.print("[yellow]WARNING: no custom rule pack active[/yellow]")
         console.print("  [dim]Lua/Luau files found but domain rules were not applied[/dim]")
 
+    try:
+        import src.payment_logic as _pl_mod
+        import src.taint_analyzer as _ta_mod
+        if not getattr(_pl_mod, "COMPILED_AVAILABLE", True) or \
+           not getattr(_ta_mod, "COMPILED_AVAILABLE", True):
+            console.print("[yellow]WARNING: optional compiled modules unavailable[/yellow]")
+            console.print("  [dim]payment/taint analysis degraded in this environment[/dim]")
+    except Exception:
+        pass
+
     risk = result.risk_score
     rc = {"critical": "red", "high": "orange", "medium": "yellow", "low": "green", "info": "blue"}.get(
         risk.risk_level.value if risk else "info", "blue")

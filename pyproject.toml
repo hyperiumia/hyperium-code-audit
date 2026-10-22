@@ -26,3 +26,6 @@ code-audit = "src.cli:main"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+
+[tool.setuptools.package-data]
+rulepacks = ["*.yaml", "*.md"]
