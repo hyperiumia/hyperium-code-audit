@@ -1,0 +1,174 @@
+# Hyperium Code-Audit — Roblox / Luau Rule Pack v1
+# Scope: Toolbox backdoors, client-server trust, economy integrity,
+#        data exfiltration, insecure configuration.
+# This pack ships as DATA: new rules without a code release.
+# Patterns avoid escape sequences on purpose (portable across YAML loaders).
+
+rules:
+  - id: RBX-BD-001
+    title: Dynamic code execution via loadstring
+    severity: critical
+    category: security_misconfig
+    cwe_id: CWE-94
+    owasp_id: A03
+    languages: [lua, luau]
+    pattern: 'loadstring[(]'
+    description: loadstring executes arbitrary runtime code and is the standard payload delivery in Toolbox backdoors.
+    remediation: Remove loadstring entirely. Never enable LoadStringEnabled.
+    confidence: 0.95
+
+  - id: RBX-BD-002
+    title: Remote content fetched at runtime (HttpGet)
+    severity: high
+    category: security_misconfig
+    cwe_id: CWE-829
+    owasp_id: A08
+    languages: [lua, luau]
+    pattern: 'HttpGet[(]'
+    description: Fetching remote code or config at runtime enables post-publish payload swaps, especially combined with loadstring.
+    remediation: Bundle required assets in the place file; allowlist and pin any external data source.
+    confidence: 0.75
+
+  - id: RBX-BD-003
+    title: require() of external asset id
+    severity: high
+    category: security_misconfig
+    cwe_id: CWE-829
+    owasp_id: A08
+    languages: [lua, luau]
+    pattern: 'require[(][0-9]'
+    description: require() on a numeric asset id loads third-party module code you do not control — a common backdoor vector.
+    remediation: Require only local ModuleScripts referenced by path.
+    confidence: 0.85
+
+  - id: RBX-BD-004
+    title: Environment tampering via getfenv/setfenv
+    severity: high
+    category: security_misconfig
+    cwe_id: CWE-913
+    owasp_id: A08
+    languages: [lua, luau]
+    pattern: 'getfenv[(]|setfenv[(]'
+    description: Environment manipulation is used to hide payloads, hook functions and evade simple detection.
+    remediation: Remove getfenv/setfenv usage; legitimate game code rarely needs them.
+    confidence: 0.8
+
+  - id: RBX-BD-005
+    title: Obfuscated payload via string.char
+    severity: medium
+    category: security_misconfig
+    cwe_id: CWE-506
+    owasp_id: A08
+    languages: [lua, luau]
+    pattern: 'string[.]char[(]'
+    description: Numeric string.char chains are the classic way to hide malicious strings from review.
+    remediation: Decode and review the payload; replace with readable literals.
+    confidence: 0.7
+
+  - id: RBX-EXF-001
+    title: Outbound HTTP POST may exfiltrate data
+    severity: high
+    category: security_misconfig
+    cwe_id: CWE-200
+    owasp_id: A01
+    languages: [lua, luau]
+    pattern: 'PostAsync[(]|HttpPostAsync[(]'
+    description: Server-side POST to external URLs can leak player data, secrets or economy state.
+    remediation: Allowlist destinations; never send player identifiers or tokens off-platform.
+    confidence: 0.8
+
+  - id: RBX-EXF-002
+    title: Discord webhook endpoint in code
+    severity: critical
+    category: security_misconfig
+    cwe_id: CWE-200
+    owasp_id: A01
+    languages: [lua, luau]
+    pattern: 'discord[.]com/api/webhooks'
+    description: Discord webhooks in game code are the standard exfiltration channel for backdoors and stolen data.
+    remediation: Remove the webhook; rotate it immediately — assume it is compromised.
+    confidence: 0.9
+
+  - id: RBX-EXF-003
+    title: Generic outbound request API
+    severity: medium
+    category: security_misconfig
+    cwe_id: CWE-200
+    owasp_id: A10
+    languages: [lua, luau]
+    pattern: 'RequestAsync[(]'
+    description: Low-level HTTP request API bypasses common HttpService review points.
+    remediation: Use HttpService with an explicit allowlist and reviewed payloads.
+    confidence: 0.7
+
+  - id: RBX-TRUST-001
+    title: RemoteEvent handler needs server-side validation
+    severity: medium
+    category: security_misconfig
+    cwe_id: CWE-20
+    owasp_id: A04
+    languages: [lua, luau]
+    pattern: 'OnServerEvent[:.]Connect'
+    description: Every OnServerEvent handler is an untrusted client entry point; missing argument validation enables exploits and dupes.
+    remediation: Validate types, ranges and rate limits server-side before mutating state.
+    confidence: 0.6
+
+  - id: RBX-TRUST-002
+    title: RemoteFunction invocation needs server-side validation
+    severity: medium
+    category: security_misconfig
+    cwe_id: CWE-20
+    owasp_id: A04
+    languages: [lua, luau]
+    pattern: 'OnServerInvoke'
+    description: RemoteFunction handlers return data to clients; unvalidated input leaks or corrupts state.
+    remediation: Validate all arguments and return only what the client needs.
+    confidence: 0.6
+
+  - id: RBX-ECON-001
+    title: Purchase receipt handler requires idempotency
+    severity: medium
+    category: security_misconfig
+    cwe_id: CWE-841
+    owasp_id: A04
+    languages: [lua, luau]
+    pattern: 'ProcessReceipt'
+    description: MarketplaceService.ProcessReceipt must be idempotent and return PurchaseDecision promptly or grants can duplicate.
+    remediation: Record processed purchase ids; grant exactly once; return PurchaseDecision.PurchaseGranted only after persistence.
+    confidence: 0.65
+
+  - id: RBX-ECON-002
+    title: DataStore write without visible error handling
+    severity: low
+    category: security_misconfig
+    cwe_id: CWE-703
+    owasp_id: A05
+    languages: [lua, luau]
+    pattern: 'SetAsync[(]'
+    description: Unhandled SetAsync failures cause silent data loss on player progress and economy state.
+    remediation: Wrap writes with pcall, retry with backoff and queue updates on failure.
+    confidence: 0.6
+
+  - id: RBX-CFG-001
+    title: LoadStringEnabled referenced in project
+    severity: high
+    category: security_misconfig
+    cwe_id: CWE-94
+    owasp_id: A05
+    languages: [lua, luau]
+    pattern: 'LoadStringEnabled'
+    description: Enabling loadstring opens arbitrary code execution; attackers scan for games with it enabled.
+    remediation: Keep LoadStringEnabled false and remove any code depending on it.
+    confidence: 0.85
+
+  - id: RBX-CFG-002
+    title: Metatable tampering via getmetatable/setmetatable
+    severity: low
+    category: security_misconfig
+    cwe_id: CWE-913
+    owasp_id: A08
+    languages: [lua, luau]
+    pattern: 'getmetatable[(]|setmetatable[(]'
+    description: Metatable manipulation can hide malicious behavior; review its context.
+    remediation: Limit metatable use to reviewed OOP patterns; audit call sites.
+    confidence: 0.6

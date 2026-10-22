@@ -46,6 +46,8 @@ class FindingCategory(str, Enum):
 
 
 class Language(str, Enum):
+    LUA = "lua"
+    LUAU = "luau"
     PYTHON = "python"
     JAVASCRIPT = "javascript"
     TYPESCRIPT = "typescript"

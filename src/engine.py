@@ -22,7 +22,7 @@ from src.models import (
     Finding, ScanResult, ScanStats,
 )
 from src.config import CodeAuditConfig
-from src.pattern_scanner import PatternScanner, detect_language
+from src.pattern_scanner import ALL_RULES, PatternScanner, detect_language
 from src.custom_rules import load_custom_rules
 from src.secret_detector import SecretDetector
 from src.payment_scanner import PaymentScanner
@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # File extensions to scan
 SCAN_EXTENSIONS = {
     ".py", ".js", ".jsx", ".ts", ".tsx", ".php",
-    ".java", ".go", ".cs", ".rb", ".html", ".htm",
+    ".java", ".go", ".cs", ".rb", ".lua", ".luau", ".html", ".htm",
     ".vue", ".ejs", ".hbs", ".env", ".yaml", ".yml",
     ".json", ".xml", ".toml", ".cfg", ".ini", ".conf",
 }
@@ -68,6 +68,7 @@ class CodeAuditEngine:
                 logger.warning(f"Could not load custom rules: {e}")
 
         self.pattern_scanner = PatternScanner(
+            rules=ALL_RULES + extra_rules,
             min_confidence=self.config.scanners.min_confidence,
             exclude_rules=self.config.scanners.exclude_rules,
         )
@@ -115,7 +116,7 @@ class CodeAuditEngine:
         result = ScanResult(
             target_path=str(target),
             started_at=datetime.now(timezone.utc).isoformat(),
-            tool_version="1.0.0",
+            tool_version="4.0.0",
         )
 
         # Config hash for checkpoint validation

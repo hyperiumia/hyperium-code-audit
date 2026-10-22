@@ -581,3 +581,8 @@ MIT — see LICENSE.
 Built by 
 Hyperium IA
 
+
+
+## Documentation
+
+- [Technical Report v4.0](docs/TECHNICAL-REPORT.md) - arquitectura, modulo Roblox/Luau, resultados de la auditoria de ingenieria
