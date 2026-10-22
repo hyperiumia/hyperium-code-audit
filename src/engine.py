@@ -39,6 +39,7 @@ from src.scan_history import ScanHistory
 from src.triage_engine import TriageEngine
 from src.compliance_mapper import ComplianceMapper
 from src.checkpoint_manager import CheckpointManager
+from src.redaction import redact_result
 
 logger = logging.getLogger(__name__)
 
@@ -220,7 +221,8 @@ class CodeAuditEngine:
             )
             self.checkpoint_mgr.complete_phase("compliance")
 
-            # Phase 8: Save scan history
+            # Phase 8: Save scan history (solo contenido redactado)
+            redact_result(result)
             self.scan_history.save_scan(result)
 
         except Exception as e:
@@ -231,7 +233,8 @@ class CodeAuditEngine:
             except Exception:
                 self._config_errors.append(f"{type(e).__name__}: {e}")
         finally:
-            # Finalize
+            # Finalize (redaccion idempotente: cubre tambien el camino de error)
+            redact_result(result)
             for _err in self._config_errors:
                 if _err not in result.stats.errors:
                     result.stats.errors.append(_err)
