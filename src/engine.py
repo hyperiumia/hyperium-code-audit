@@ -242,6 +242,11 @@ class CodeAuditEngine:
             result.completed_at = datetime.now(timezone.utc).isoformat()
             result.stats.total_files_scanned = len(source_files) if 'source_files' in dir() else 0
             result.stats.scan_duration_seconds = round(elapsed, 2)
+            disc = getattr(self, "_last_discovery", None) or {}
+            result.stats.skipped_files += int(disc.get("skipped", 0))
+            for _note in disc.get("notes", []):
+                if _note not in result.stats.discovery_notes:
+                    result.stats.discovery_notes.append(_note)
             result.stats.files_by_language = self._count_by_lang(source_files) if 'source_files' in dir() else {}
 
             self.checkpoint_mgr.complete_scan(result.scan_id)
@@ -250,28 +255,102 @@ class CodeAuditEngine:
         return result
 
     def _discover_files(self, target: Path) -> List[Path]:
-        """Discover all scannable source files."""
+        """Discover all scannable source files.
+
+        Fase 6.5/6.6: nombres especiales (.env, Dockerfile, *.tf), omisiones
+        contadas con motivo, exclusiones profundas, symlinks y --since.
+        """
+        self._last_discovery = {"skipped": 0, "notes": []}
         files: List[Path] = []
-        exclude = set(self.config.scan.exclude_patterns)
+        exclude = [p for p in (self.config.scan.exclude_patterns or []) if p]
         max_size = self.config.scan.max_file_size_kb * 1024
+        follow = getattr(self.config.scan, "follow_symlinks", False)
+
+        def is_excluded(path: Path) -> bool:
+            parts = set(path.parts)
+            for pat in exclude:
+                token = pat.strip("/*")
+                if token and token in parts:
+                    return True
+                try:
+                    if path.match(pat):
+                        return True
+                except Exception:
+                    pass
+            return False
+
+        def is_scannable(path: Path) -> bool:
+            name = path.name.lower()
+            if path.suffix.lower() in SCAN_EXTENSIONS:
+                return True
+            if name == "dockerfile" or name.startswith("dockerfile."):
+                return True
+            if name == ".env" or name.startswith(".env.") or name.endswith(".env"):
+                return True
+            return path.suffix.lower() in (".tf", ".hcl")
 
         if target.is_file():
             return [target]
 
-        for path in target.rglob("*"):
+        for path in sorted(target.rglob("*")):
+            if path.is_symlink() and not follow:
+                self._last_discovery["skipped"] += 1
+                self._last_discovery["notes"].append("symlink skipped: " + path.name)
+                continue
             if not path.is_file():
                 continue
-            if path.suffix.lower() not in SCAN_EXTENSIONS:
+            if not is_scannable(path):
                 continue
-            if any(path.match(pat) for pat in exclude):
+            if is_excluded(path):
                 continue
             try:
                 if path.stat().st_size > max_size:
-                    result.stats.skipped_files += 1
+                    self._last_discovery["skipped"] += 1
+                    self._last_discovery["notes"].append(
+                        "oversize skipped: " + path.name + " > "
+                        + str(self.config.scan.max_file_size_kb) + "KB")
                     continue
-            except Exception:
+            except OSError as exc:
+                self._last_discovery["skipped"] += 1
+                self._last_discovery["notes"].append("unreadable: " + path.name)
+                self._last_discovery["notes"].append(str(exc))
                 continue
             files.append(path)
+
+        since = getattr(self.config.scanners, "incremental_since", "") or ""
+        if since:
+            root = target if target.is_dir() else target.parent
+            if not (root / ".git").exists():
+                self._config_errors.append("--since used outside a git repository")
+                self._last_discovery["notes"].append("--since " + since + ": not a git repository")
+                return []
+            import subprocess
+            diff = subprocess.run(["git", "diff", "--name-only", since],
+                                  capture_output=True, text=True,
+                                  cwd=str(root), timeout=30)
+            if diff.returncode != 0:
+                self._config_errors.append("--since ref invalid or unusable: " + since)
+                self._last_discovery["notes"].append("--since " + since + ": git error")
+                return []
+            changed = {ln.strip() for ln in diff.stdout.splitlines() if ln.strip()}
+            untracked = subprocess.run(["git", "ls-files", "--others", "--exclude-standard"],
+                                       capture_output=True, text=True,
+                                       cwd=str(root), timeout=30)
+            for ln in untracked.stdout.splitlines():
+                if ln.strip():
+                    changed.add(ln.strip())
+            kept = []
+            for f in files:
+                try:
+                    rel = f.relative_to(root).as_posix()
+                except ValueError:
+                    rel = f.name
+                if rel in changed:
+                    kept.append(f)
+            self._last_discovery["notes"].append(
+                "--since " + since + ": " + str(len(kept)) + "/"
+                + str(len(files)) + " changed files kept")
+            return kept
 
         return files
 

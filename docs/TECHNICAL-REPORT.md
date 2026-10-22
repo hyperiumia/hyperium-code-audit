@@ -21,8 +21,8 @@ Este informe documenta la arquitectura del sistema, los defectos de ingenieria d
 | Pruebas automatizadas | 140 aprobadas, 1 omitida (dependencia opcional) |
 | Defectos de ingenieria detectados y corregidos | 6 (2 no reportados previamente, incluyendo 1 critico de empaquetado) |
 | Reglas de seguridad Roblox/Luau implementadas | 14 en 5 categorias |
-| Falsos positivos en codigo Luau legitimo | 0 (garantizado por prueba automatizada) |
-| Tiempo de analisis completo | < 0.4 s (suite), milisegundos por archivo |
+| Falsos positivos en corpus de fixtures | 0 (corpus limitado; ver seccion 12) |
+| Tiempo de analisis completo | 0.03 s por objetivo pequeno; suite completa < 5 s |
 | Fases de ingenieria cerradas | 4 (core, Luau, rule pack, vitrina comercial) |
 
 ---
@@ -154,7 +154,7 @@ La cadena de suministro de desarrollo en Roblox tiene un vector de riesgo conoci
 
 ### 5.3 Garantia de calidad del pack
 
-- **Cero falsos positivos en codigo legitimo**: prueba automatizada ejecuta el pack sobre codigo Luau valido y exige cero hallazgos. Esta prueba corre en cada build del producto.
+- **Deteccion sin falsos positivos en el corpus de pruebas**: el pack se verifica automaticamente contra fixtures de codigo Luau legitimo (handlers validados, pcall, configuracion deshabilitada) y exige cero detecciones duras. Un corpus limitado no permite extrapolar "cero falsos positivos" a proyectos reales: revise siempre los resultados.
 - **Prueba de extremo a extremo**: un proyecto con backdoor simulada produce exactamente los hallazgos esperados por archivo, incluida exportacion SARIF verificada.
 - **Actualizacion sin releases**: el pack es un artefacto de datos (YAML). Nuevas firmas de backdoors se publican como versiones del pack sin tocar el motor.
 
@@ -192,7 +192,7 @@ Historia completa en git: cada correccion referencia su prueba, cada merge docum
 | Indicador | Linea base (Fase 0) | Estado actual |
 |---|---|---|
 | Pruebas automatizadas | 120 passed, 1 skipped | **140 passed, 1 skipped** |
-| Defectos abiertos | 6 | 0 (decision estrategica seccion 8 aparte) |
+| Defectos abiertos | 6 | 0 internos abiertos; revision externa reprodujo 17 escenarios adicionales (corregidos, ver seccion 12) |
 | Soporte de lenguajes | 8 + configs | **9 + configs (Lua/Luau)** |
 | Reglas de dominio Roblox | — | **14** |
 | Falsos positivos demostrados en demo limpio | — | **0** |
@@ -267,3 +267,21 @@ Hyperium Code-Audit es un analizador **estatico**. Su alcance y sus limites se d
 
 **Contacto:** Hyperium IA — www.hyperiumia.com | github.com/hyperiumia
 **Producto:** github.com/hyperiumia/hyperium-code-audit | Licencia: MIT (nucleo)
+
+
+---
+
+## 12. Revision externa y correcciones (oct-2026)
+
+Una revision tecnica independiente reprodujo 17 escenarios controlados sobre el release. Correcciones aplicadas bajo TDD con regresiones permanentes:
+
+| Bloque | Escenarios | Correccion |
+|---|---|---|
+| Fail-open | 7-10, 17 | Estados completed/partial/failed, exit 2 operativo, packs validados, errores en stats.errors |
+| Distribucion | wheel | Open core: CLI base sin binarios, rule packs empaquetados, degradacion anunciada |
+| Confidencialidad | 16 | Redaccion central de secretos antes de persistir/exportar |
+| Deteccion | 1-6 | Lexer Luau (comentarios/literales), tolerancia a espacios, review points reclasificados |
+| Cobertura | 11-14 | .env/Dockerfile/*.tf descubiertos, omisiones contadas, exclusiones profundas, symlinks |
+| Integracion | 15 + CI | --since conectado y validado; plantilla CI con gate preservado |
+
+Limites: las pruebas sinteticas no estiman precision poblacional. La validacion externa sobre proyectos autorizados permanece abierta.
