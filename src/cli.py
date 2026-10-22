@@ -88,10 +88,14 @@ def scan(target, config, output, fmt, no_secrets, no_deps, no_payment, no_taint,
         result = engine.scan(target)
 
     console.print()
+    coverage_limited = False
     files_by_lang = getattr(result.stats, "files_by_language", {}) or {}
     if any(k in ("lua", "luau") for k in files_by_lang) and not cfg.scanners.custom_rules_path:
+        coverage_limited = True
         console.print("[yellow]WARNING: no custom rule pack active[/yellow]")
         console.print("  [dim]Lua/Luau files found but domain rules were not applied[/dim]")
+    for _note in (getattr(result.stats, "discovery_notes", []) or [])[:20]:
+        console.print("  [dim]skip:[/dim] " + _note)
 
     try:
         import src.payment_logic as _pl_mod
@@ -166,9 +170,10 @@ def scan(target, config, output, fmt, no_secrets, no_deps, no_payment, no_taint,
 
     console.print()
     op_errors = list(getattr(result.stats, "errors", []) or [])
-    state = "failed"
-    if result.stats.total_files_scanned:
-        state = "partial" if op_errors else "completed"
+    if op_errors:
+        state = "partial" if result.stats.total_files_scanned else "failed"
+    else:
+        state = "completed"
     console.print("[bold yellow]Status: " + state.upper() + "[/bold yellow]")
     if op_errors:
         for err in op_errors:
@@ -180,7 +185,10 @@ def scan(target, config, output, fmt, no_secrets, no_deps, no_payment, no_taint,
     if exit_code != 0:
         console.print("[bold red]✗ Exit " + str(exit_code) + ": findings at " + fail_on + "+ detected[/bold red]")
     else:
-        console.print("[bold green]✓ Exit 0: clean[/bold green]")
+        if coverage_limited:
+            console.print("[bold green]✓ Exit 0: no findings (coverage limited)[/bold green]")
+        else:
+            console.print("[bold green]✓ Exit 0: clean[/bold green]")
     sys.exit(exit_code)
 
 
