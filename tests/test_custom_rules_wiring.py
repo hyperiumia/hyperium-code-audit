@@ -14,7 +14,7 @@ def test_custom_rules_loaded_and_applied(tmp_path):
         "    severity: high\n"
         "    category: security_misconfig\n"
         "    languages: [python]\n"
-        "    pattern: 'evil_backdoor_function\\\\('\n"
+        "    pattern: 'evil_backdoor_function\\('\n"
         "    confidence: 0.9\n"
     )
     (tmp_path / "app.py").write_text("def run():\n    evil_backdoor_function()\n")
