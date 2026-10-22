@@ -76,7 +76,7 @@ def load_custom_rules(rules_path: str) -> List[ScanRule]:
                 confidence=float(rd.get("confidence", 0.7)),
                 references=rd.get("references", []),
             ))
-                rules[-1].match_scope = rd.get("match_scope", "content")
+            rules[-1].match_scope = rd.get("match_scope", "content")
         except Exception as e:
             logger.warning(f"Skipping custom rule: {e}")
     return rules
