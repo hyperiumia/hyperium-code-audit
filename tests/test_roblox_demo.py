@@ -42,14 +42,12 @@ def test_demo_clean_file_has_zero_roblox_findings():
     assert bad == [], f"clean.luau genero falsos positivos: {bad}"
 
 
-def test_sarif_export_contains_roblox_rules():
+def test_sarif_export_contains_roblox_rules(tmp_path):
     from src.sarif_exporter import generate_sarif
 
     result = _scan_demo()
-    try:
-        payload = generate_sarif(result)
-    except TypeError:
-        payload = generate_sarif(scan_result=result)
-    text = json.dumps(payload)
+    out = tmp_path / "roblox.sarif"
+    generate_sarif(result, str(out))
+    text = out.read_text()
     assert "RBX-BD-001" in text
     assert "RBX-TRUST-001" in text
