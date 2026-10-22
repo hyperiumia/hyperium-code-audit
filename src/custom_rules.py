@@ -15,9 +15,27 @@ SEVERITY_MAP = {v.value: v for v in Severity}
 LANGUAGE_MAP = {v.value: v for v in Language}
 
 
+def resolve_rules_path(rules_path: str) -> Path:
+    """Resolve a filesystem path or a bundled pack name (e.g. 'roblox')."""
+    p = Path(rules_path)
+    if p.exists():
+        return p
+    stem = rules_path
+    if stem.endswith(".yaml") or stem.endswith(".yml"):
+        stem = Path(stem).stem
+    try:
+        import rulepacks as _rp
+        cand = Path(_rp.__file__).resolve().parent / (stem + ".yaml")
+        if cand.exists():
+            return cand
+    except Exception:
+        pass
+    raise FileNotFoundError(f"Custom rules file not found: {rules_path}")
+
+
 def load_custom_rules(rules_path: str) -> List[ScanRule]:
-    """Load custom rules from a YAML file."""
-    path = Path(rules_path)
+    """Load custom rules from a YAML file or bundled pack name."""
+    path = resolve_rules_path(rules_path)
     if not path.exists():
         raise FileNotFoundError(f"Custom rules file not found: {rules_path}")
     data = yaml.safe_load(path.read_text())
